@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model TaiKhoan {
+  maTaiKhoan  String   @id @default(uuid())
+  tenDangNhap String   @unique
+  matKhau     String
+  quyenHan    String   @default("USER")
+  trangThai   Int      @default(1)
+  ngayTao     DateTime @default(now())
+
+  nguoiDung NguoiDung?
+}
+
+model NguoiDung {
+  maNguoiDung String   @id @default(uuid())
+  maTaiKhoan  String   @unique
+  taiKhoan    TaiKhoan @relation(fields: [maTaiKhoan], references: [maTaiKhoan], onDelete: Cascade)
+  hoTen       String
+  email       String   @unique
+  dienThoai   String?
+  diaChi      String?
+
+  gioHangs GioHang[]
+  donHangs DonHang[]
+}
+
+model DanhMuc {
+  maDanhMuc  String  @id @default(uuid())
+  tenDanhMuc String
+  moTa       String?
+
+  sanPhams SanPham[]
+}
+
+model SanPham {
+  maSanPham  String  @id @default(uuid())
+  maDanhMuc  String
+  danhMuc    DanhMuc @relation(fields: [maDanhMuc], references: [maDanhMuc])
+  tenSanPham String
+  thuongHieu String
+  giaBan     Float
+  soLuongTon Int
+  baoHanh    String?
+  moTaKT     String?
+
+  hinhAnhs   HinhAnh[]
+  ctGioHangs ChiTietGioHang[]
+  ctDonHangs ChiTietDonHang[]
+}
+
+model HinhAnh {
+  maHinh    String  @id @default(uuid())
+  maSanPham String
+  sanPham   SanPham @relation(fields: [maSanPham], references: [maSanPham], onDelete: Cascade)
+  url       String
+}
+
+model GioHang {
+  maGioHang   String    @id @default(uuid())
+  maNguoiDung String
+  nguoiDung   NguoiDung @relation(fields: [maNguoiDung], references: [maNguoiDung], onDelete: Cascade)
+
+  chiTiet ChiTietGioHang[]
+}
+
+model ChiTietGioHang {
+  maCTGH    String  @id @default(uuid())
+  maGioHang String
+  gioHang   GioHang @relation(fields: [maGioHang], references: [maGioHang], onDelete: Cascade)
+  maSanPham String
+  sanPham   SanPham @relation(fields: [maSanPham], references: [maSanPham], onDelete: Cascade)
+  soLuong   Int
+}
+
+model DonHang {
+  maDonHang    String    @id @default(uuid())
+  maNguoiDung  String
+  nguoiDung    NguoiDung @relation(fields: [maNguoiDung], references: [maNguoiDung])
+  tenNguoiNhan String
+  sdtNhan      String
+  ngayDat      DateTime  @default(now())
+  tongTien     Float
+  trangThai    String    @default("Cho_Xu_Ly")
+  diaChiGiao   String
+
+  chiTiet   ChiTietDonHang[]
+  thanhToan ThanhToan[]
+  vanChuyen VanChuyen[]
+}
+
+model ChiTietDonHang {
+  maChiTiet String  @id @default(uuid())
+  maDonHang String
+  donHang   DonHang @relation(fields: [maDonHang], references: [maDonHang], onDelete: Cascade)
+  maSanPham String
+  sanPham   SanPham @relation(fields: [maSanPham], references: [maSanPham])
+  soLuong   Int
+  donGia    Float
+}
+
+model ThanhToan {
+  maThanhToan String    @id @default(uuid())
+  maDonHang   String
+  donHang     DonHang   @relation(fields: [maDonHang], references: [maDonHang], onDelete: Cascade)
+  phuongThuc  String
+  trangThai   String
+  ngayTT      DateTime?
+}
+
+model VanChuyen {
+  maVanChuyen  String  @id @default(uuid())
+  maDonHang    String
+  donHang      DonHang @relation(fields: [maDonHang], references: [maDonHang], onDelete: Cascade)
+  donVi        String
+  phiVanChuyen Float
+  trangThai    String
+}
