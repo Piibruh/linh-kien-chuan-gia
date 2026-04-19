@@ -77,7 +77,9 @@ function mapOrder(dh: any) {
     status: mapStatus(dh.trangThai),
     createdAt: dh.ngayDat?.toISOString?.() ?? new Date().toISOString(),
     updatedAt: dh.ngayDat?.toISOString?.() ?? new Date().toISOString(),
-    notes: null,
+    notes: dh.ghiChuHuy ? dh.ghiChuHuy : null, // Ghi chú chung, tạm dùng ghiChuHuy nếu notes bị trùng
+    cancellationReason: dh.lyDoHuy ?? null,
+    cancellationNote: dh.ghiChuHuy ?? null,
     items: (dh.chiTiet ?? []).map((ct: any) => ({
       productId: ct.maSanPham,
       name: ct.sanPham?.tenSanPham ?? 'Sản phẩm',
@@ -415,11 +417,16 @@ app.post('/api/orders', authRequired, async (req, res) => {
 });
 
 app.patch('/api/orders/:id/status', authRequired, requireRole('admin', 'staff'), async (req, res) => {
-  const { status } = req.body;
+  const { status, reason, note } = req.body;
   try {
+    const data: any = { trangThai: mapStatusToDb(status) };
+    if (status === 'cancelled') {
+      if (reason !== undefined) data.lyDoHuy = reason;
+      if (note !== undefined) data.ghiChuHuy = note;
+    }
     const dh = await prisma.donHang.update({
       where: { maDonHang: req.params.id },
-      data: { trangThai: mapStatusToDb(status) },
+      data,
       include: { chiTiet: { include: { sanPham: true } }, nguoiDung: true },
     });
     res.json({ order: mapOrder(dh) });
@@ -463,7 +470,11 @@ app.post('/api/orders/:id/cancel', authRequired, async (req, res) => {
       }
       return tx.donHang.update({
         where: { maDonHang: req.params.id },
-        data: { trangThai: 'Da_Huy' },
+        data: { 
+          trangThai: 'Da_Huy',
+          lyDoHuy: req.body?.reason ?? null,
+          ghiChuHuy: req.body?.note ?? null
+        },
         include: { chiTiet: { include: { sanPham: true } }, nguoiDung: true },
       });
     });

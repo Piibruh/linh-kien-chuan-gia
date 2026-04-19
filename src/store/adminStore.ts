@@ -76,6 +76,8 @@ export interface Order {
   shippedAt?: string | null;
   deliveredAt?: string | null;
   cancelledAt?: string | null;
+  cancellationReason?: string | null;
+  cancellationNote?: string | null;
 }
 
 export type StoredUser = User & {
@@ -312,11 +314,11 @@ interface AdminStore {
   // Orders
   orders: Order[];
   createOrder: (payload: CreateOrderPayload) => Promise<Order>;
-  updateOrderStatus: (id: string, status: OrderStatus) => Promise<void>;
+  updateOrderStatus: (id: string, status: OrderStatus, payload?: { reason?: string, note?: string }) => Promise<void>;
   deleteOrder: (id: string) => Promise<void>;
   setOrdersFromServer: (orders: Order[]) => void;
   bootstrapFromApi: () => Promise<void>;
-  cancelOrderByCustomer: (id: string) => Promise<void>;
+  cancelOrderByCustomer: (id: string, payload?: { reason?: string, note?: string }) => Promise<void>;
   patchOrderCustomerInfo: (
     id: string,
     payload: Partial<{
@@ -583,7 +585,7 @@ export const useAdminStore = create<AdminStore>()(
         }
       },
 
-      updateOrderStatus: async (id, status) => {
+      updateOrderStatus: async (id, status, payload) => {
         const token = useAuthStore.getState().token;
         if (token) {
           try {
@@ -593,7 +595,7 @@ export const useAdminStore = create<AdminStore>()(
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${token}`,
               },
-              body: JSON.stringify({ status }),
+              body: JSON.stringify({ status, reason: payload?.reason, note: payload?.note }),
             });
             if (res.ok) {
               const { order: raw } = await res.json();
@@ -620,7 +622,7 @@ export const useAdminStore = create<AdminStore>()(
         await delay();
         set((state) => ({
           orders: state.orders.map((o) =>
-            o.id === id ? { ...o, status, updatedAt: nowIso() } : o
+            o.id === id ? { ...o, status, updatedAt: nowIso(), cancellationReason: payload?.reason, cancellationNote: payload?.note } : o
           ),
         }));
       },
@@ -684,18 +686,21 @@ export const useAdminStore = create<AdminStore>()(
         }
       },
 
-      cancelOrderByCustomer: async (id) => {
+      cancelOrderByCustomer: async (id, payload) => {
         const token = useAuthStore.getState().token;
-        if (!token) throw new Error('Chưa đăng nhập');
-
-        // Offline / demo mode — cancel locally
         const localCancel = () => {
           set((state) => ({
             orders: state.orders.map((o) =>
-              o.id === id ? { ...o, status: 'cancelled' as OrderStatus, updatedAt: nowIso(), cancelledAt: nowIso() } : o
+              o.id === id ? { ...o, status: 'cancelled' as OrderStatus, updatedAt: nowIso(), cancelledAt: nowIso(), cancellationReason: payload?.reason, cancellationNote: payload?.note } : o
             ),
           }));
         };
+
+        if (!token) {
+          await delay();
+          localCancel();
+          return;
+        }
 
         try {
           const res = await fetch(`/api/orders/${encodeURIComponent(id)}/cancel`, {

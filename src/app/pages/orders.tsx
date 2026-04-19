@@ -174,6 +174,33 @@ export default function OrdersPage() {
   const [savingNotes, setSavingNotes] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
+  const CUSTOMER_CANCEL_REASONS = [
+    'Muốn thay đổi địa chỉ nhận hàng',
+    'Thêm/bớt sản phẩm',
+    'Tìm thấy giá rẻ hơn ở nơi khác',
+    'Đổi ý, không mua nữa',
+    'Lý do khác'
+  ];
+
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState(CUSTOMER_CANCEL_REASONS[0]);
+  const [cancelNote, setCancelNote] = useState('');
+
+  const submitCancelOrder = async () => {
+    if (!selectedOrder) return;
+    setCancelling(true);
+    try {
+      await cancelOrderByCustomer(selectedOrder.id, { reason: cancelReason, note: cancelNote });
+      toast.success('Đã hủy đơn hàng thành công');
+      setSelectedOrder(null);
+      setCancelModalOpen(false);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Không thể hủy đơn');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   // Guard (also protected at router level)
   if (!isLoggedIn || !user) {
     return (
@@ -585,23 +612,31 @@ export default function OrdersPage() {
                     <button
                       type="button"
                       disabled={cancelling}
-                      onClick={async () => {
-                        if (!window.confirm('Bạn chắc chắn muốn hủy đơn hàng này?')) return;
-                        setCancelling(true);
-                        try {
-                          await cancelOrderByCustomer(selectedOrder.id);
-                          toast.success('Đã hủy đơn hàng');
-                          setSelectedOrder(null);
-                        } catch (e: unknown) {
-                          toast.error(e instanceof Error ? e.message : 'Không thể hủy đơn');
-                        } finally {
-                          setCancelling(false);
-                        }
+                      onClick={() => {
+                        setCancelReason(CUSTOMER_CANCEL_REASONS[0]);
+                        setCancelNote('');
+                        setCancelModalOpen(true);
                       }}
                       className="px-4 py-2 rounded-lg border border-destructive text-destructive text-sm font-medium hover:bg-destructive/10 disabled:opacity-60"
                     >
                       {cancelling ? 'Đang xử lý…' : 'Hủy đơn hàng'}
                     </button>
+                  </div>
+                </div>
+              )}
+
+              {selectedOrder.sourceOrder.status === 'cancelled' && (
+                <div>
+                  <h3 className="font-bold text-destructive mb-2 flex items-center gap-2"><ShieldAlert className="h-4 w-4" /> Thông tin hủy đơn</h3>
+                  <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 space-y-2">
+                    <p className="text-sm font-medium text-destructive">
+                      <span className="font-bold">Lý do: </span>{selectedOrder.sourceOrder.cancellationReason || 'Không rõ lý do'}
+                    </p>
+                    {selectedOrder.sourceOrder.cancellationNote && (
+                      <p className="text-sm italic text-destructive/80">
+                        <span className="font-bold not-italic">Ghi chú: </span>{selectedOrder.sourceOrder.cancellationNote}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
@@ -660,6 +695,66 @@ export default function OrdersPage() {
                   </span>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Order Modal */}
+      {cancelModalOpen && selectedOrder && (
+        <div className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4" onClick={() => setCancelModalOpen(false)}>
+          <div className="bg-card border border-border rounded-2xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-border">
+              <h3 className="text-xl font-bold text-foreground">Hủy Đơn Hàng</h3>
+              <p className="text-sm text-muted-foreground mt-1">Vui lòng chọn lý do khách quan để hủy đơn hàng này.</p>
+            </div>
+            
+            <div className="p-6 space-y-5">
+              <div className="space-y-3">
+                <label className="text-sm font-bold text-foreground">Lý do hủy định sẵn</label>
+                {CUSTOMER_CANCEL_REASONS.map((reason) => (
+                  <label key={reason} className="flex items-center gap-3 p-3 rounded-xl border border-border hover:bg-muted/50 cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-primary focus-within:border-primary">
+                    <input
+                      type="radio"
+                      name="customerCancelReason"
+                      value={reason}
+                      checked={cancelReason === reason}
+                      onChange={(e) => setCancelReason(e.target.value)}
+                      className="w-4 h-4 text-primary bg-background focus:ring-primary focus:ring-offset-background border-border"
+                    />
+                    <span className="text-sm font-medium text-foreground">{reason}</span>
+                  </label>
+                ))}
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-foreground">Lý do khác / Ghi chú chi tiết (nếu có)</label>
+                <textarea
+                  className="w-full rounded-xl border border-input bg-background p-3 text-sm focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-foreground"
+                  rows={3}
+                  placeholder="Bạn có muốn bổ sung thêm điều gì không?"
+                  value={cancelNote}
+                  onChange={(e) => setCancelNote(e.target.value)}
+                ></textarea>
+              </div>
+            </div>
+            
+            <div className="p-4 bg-muted/30 border-t border-border flex gap-3 justify-end rounded-b-2xl">
+              <button
+                onClick={() => setCancelModalOpen(false)}
+                className="px-5 py-2.5 rounded-xl font-medium text-muted-foreground hover:bg-muted/80 transition-colors"
+                disabled={cancelling}
+              >
+                Trở lại
+              </button>
+              <button
+                onClick={submitCancelOrder}
+                disabled={cancelling}
+                className="px-5 py-2.5 rounded-xl font-medium text-destructive-foreground bg-destructive hover:bg-destructive/90 transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
+              >
+                {cancelling && <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></span>}
+                Xác nhận hủy
+              </button>
             </div>
           </div>
         </div>

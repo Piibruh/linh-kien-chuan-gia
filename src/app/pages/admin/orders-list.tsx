@@ -49,6 +49,19 @@ export default function OrdersList() {
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
+  // New Cancel Modal State
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState('Khách hàng yêu cầu hủy');
+  const [cancelNote, setCancelNote] = useState('');
+
+  const ADMIN_CANCEL_REASONS = [
+    'Khách hàng yêu cầu hủy',
+    'Hết hàng',
+    'Lỗi hệ thống',
+    'Lý do khác'
+  ];
+
   // Filter and sort orders
   const filteredOrders = useMemo(() => {
     let filtered = orders.filter((o) => {
@@ -174,10 +187,10 @@ export default function OrdersList() {
     window.print();
   };
 
-  const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {
+  const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus, payload?: { reason?: string, note?: string }) => {
     setUpdatingOrderId(orderId);
     try {
-      await updateOrderStatus(orderId, newStatus);
+      await updateOrderStatus(orderId, newStatus, payload);
       toast.success('Đã cập nhật trạng thái đơn hàng');
     } catch {
       toast.error('Không thể cập nhật trạng thái');
@@ -186,9 +199,20 @@ export default function OrdersList() {
     }
   };
 
+  const submitCancelOrder = () => {
+    if (!orderToCancel) return;
+    
+    handleUpdateStatus(orderToCancel, 'cancelled', { reason: cancelReason, note: cancelNote });
+    
+    setCancelModalOpen(false);
+    setOrderToCancel(null);
+    setCancelReason('Khách hàng yêu cầu hủy');
+    setCancelNote('');
+  };
+
   const handleExportCSV = () => {
     const csvContent = [
-      ['Mã đơn', 'Khách hàng', 'Email', 'Tổng tiền', 'Trạng thái', 'Ngày tạo'],
+      ['Mã đơn', 'Người dùng', 'Email', 'Tổng tiền', 'Trạng thái', 'Ngày tạo'],
       ...filteredOrders.map((order) => [
         order.id,
         order.customerName,
@@ -481,7 +505,7 @@ export default function OrdersList() {
                         onClick={() => handleSort('customerName')}
                       >
                         <div className="flex items-center gap-1">
-                          Khách hàng
+                          Người dùng
                           {sortField === 'customerName' && (
                             sortOrder === 'asc' ? (
                               <ChevronUp className="w-3 h-3" />
@@ -614,12 +638,13 @@ export default function OrdersList() {
                                 <CheckCircle className="w-4 h-4 text-green-600" />
                               </button>
                             )}
-                            {(order.status === 'pending' || order.status === 'processing') && (
+                            {order.status !== 'cancelled' && (
                               <button
                                 onClick={() => {
-                                  if (confirm(`Bạn có chắc muốn hủy đơn hàng "${order.id}"?`)) {
-                                    handleUpdateStatus(order.id, 'cancelled');
-                                  }
+                                  setOrderToCancel(order.id);
+                                  setCancelReason(ADMIN_CANCEL_REASONS[0]);
+                                  setCancelNote('');
+                                  setCancelModalOpen(true);
                                 }}
                                 disabled={updatingOrderId === order.id}
                                 className="p-1.5 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
@@ -679,7 +704,7 @@ export default function OrdersList() {
                     <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar printable-area">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                         <div className="space-y-4">
-                          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Thông tin khách hàng</h3>
+                          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Thông tin người dùng</h3>
                           <div className="space-y-2">
                             <p className="text-lg font-bold text-gray-900">{selectedOrder.customerName}</p>
                             <div className="space-y-1.5">
@@ -727,9 +752,21 @@ export default function OrdersList() {
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pt-4 border-t border-gray-100">
-                        <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100">
-                          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3">Ghi chú</h3>
-                          <p className="text-sm text-gray-600 italic font-medium leading-relaxed">{selectedOrder.notes || 'Không có ghi chú từ khách hàng'}</p>
+                        <div className="flex flex-col gap-4">
+                          <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100">
+                            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3">Ghi chú</h3>
+                            <p className="text-sm text-gray-600 italic font-medium leading-relaxed">{selectedOrder.notes || 'Không có ghi chú từ người dùng'}</p>
+                          </div>
+                          
+                          {selectedOrder.status === 'cancelled' && (
+                            <div className="p-5 bg-red-50 rounded-2xl border border-red-100">
+                              <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-red-500 mb-3">Thông tin hủy đơn</h3>
+                              <p className="text-sm text-red-700 font-bold mb-1">Lý do: {selectedOrder.cancellationReason || 'Không rõ lý do'}</p>
+                              {selectedOrder.cancellationNote && (
+                                <p className="text-sm text-red-600 italic mt-2">Ghi chú: {selectedOrder.cancellationNote}</p>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div className="space-y-3">
                           <div className="flex justify-between items-center text-sm font-bold text-gray-500">
@@ -810,6 +847,60 @@ export default function OrdersList() {
           )}
         </div>
       </div>
+
+      {/* Cancel Order Modal */}
+      {cancelModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4" onClick={() => setCancelModalOpen(false)}>
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="text-xl font-bold text-gray-900">Hủy đơn hàng {orderToCancel}</h3>
+              <p className="text-sm text-gray-500 mt-1">Vui lòng chọn lý do khách quan để hủy đơn hàng này.</p>
+            </div>
+            <div className="p-6 space-y-5">
+              <div className="space-y-3">
+                <label className="text-sm font-bold text-gray-700">Lý do hủy</label>
+                {ADMIN_CANCEL_REASONS.map((reason) => (
+                  <label key={reason} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
+                    <input
+                      type="radio"
+                      name="cancelReason"
+                      value={reason}
+                      checked={cancelReason === reason}
+                      onChange={(e) => setCancelReason(e.target.value)}
+                      className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                    />
+                    <span className="text-sm font-medium text-gray-700">{reason}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-gray-700">Ghi chú thêm (Tùy chọn)</label>
+                <textarea
+                  className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                  rows={3}
+                  placeholder="Nhập ghi chú chi tiết về việc hủy đơn..."
+                  value={cancelNote}
+                  onChange={(e) => setCancelNote(e.target.value)}
+                ></textarea>
+              </div>
+            </div>
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex gap-3 justify-end rounded-b-2xl">
+              <button
+                onClick={() => setCancelModalOpen(false)}
+                className="px-5 py-2.5 rounded-xl font-bold text-gray-700 hover:bg-gray-200 transition-colors"
+              >
+                Đóng
+              </button>
+              <button
+                onClick={submitCancelOrder}
+                className="px-5 py-2.5 rounded-xl font-bold text-white bg-red-600 hover:bg-red-700 transition-colors shadow-sm"
+              >
+                Xác nhận hủy
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

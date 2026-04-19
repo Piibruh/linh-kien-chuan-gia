@@ -441,13 +441,13 @@ export default function AddUser() {
                     onChange={(e) => setRole(e.target.value as UserRole)}
                     className="w-full px-3 py-2 text-sm border border-[#8c8f94] rounded focus:outline-none focus:ring-1 focus:ring-[#2271b1] focus:border-[#2271b1]"
                   >
-                    <option value="user">Khách hàng</option>
+                    <option value="user">Người dùng</option>
                     <option value="staff">Nhân viên</option>
                     <option value="admin">Quản trị viên</option>
                   </select>
                   <div className="mt-3 space-y-2 text-xs text-gray-600">
                     <p>
-                      <strong>Khách hàng:</strong> Mua hàng, xem đơn hàng
+                      <strong>Người dùng:</strong> Mua hàng, xem đơn hàng
                     </p>
                     <p>
                       <strong>Nhân viên:</strong> Quản lý đơn hàng, sản phẩm

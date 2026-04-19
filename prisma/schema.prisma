@@ -89,6 +89,8 @@ model DonHang {
   tongTien     Float
   trangThai    String    @default("Cho_Xu_Ly")
   diaChiGiao   String
+  lyDoHuy      String?
+  ghiChuHuy    String?
 
   chiTiet   ChiTietDonHang[]
   thanhToan ThanhToan[]

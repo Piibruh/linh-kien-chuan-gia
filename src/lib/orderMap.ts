@@ -36,6 +36,8 @@ export function mapPrismaOrderToStore(o: {
     price: number;
     quantity: number;
   }>;
+  cancellationReason?: string | null;
+  cancellationNote?: string | null;
 }): Order {
   return {
     id: o.id,
@@ -63,5 +65,7 @@ export function mapPrismaOrderToStore(o: {
     shippedAt: iso(o.shippedAt),
     deliveredAt: iso(o.deliveredAt),
     cancelledAt: iso(o.cancelledAt),
+    cancellationReason: o.cancellationReason ?? null,
+    cancellationNote: o.cancellationNote ?? null,
   };
 }

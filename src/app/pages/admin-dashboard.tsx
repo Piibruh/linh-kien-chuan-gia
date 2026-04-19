@@ -55,7 +55,7 @@ const sidebarItems: SidebarItem[] = [
   { id: 'products', label: 'Sản phẩm', icon: Package },
   { id: 'categories', label: 'Danh mục', icon: FolderTree },
   { id: 'orders', label: 'Đơn hàng', icon: ShoppingCart },
-  { id: 'customers', label: 'Khách hàng', icon: Users },
+  { id: 'customers', label: 'Người dùng', icon: Users },
   { id: 'settings', label: 'Cài đặt', icon: Settings },
 ];
 
@@ -294,7 +294,7 @@ export default function AdminDashboard() {
     },
     { title: 'Đơn hàng mới', value: String(orders.length), change: '+8.2%', icon: ShoppingCart, color: 'from-blue-500 to-blue-600' },
     { title: 'Sản phẩm', value: String(products.length), change: '+23.1%', icon: Package, color: 'from-purple-500 to-purple-600' },
-    { title: 'Khách hàng', value: String(users.filter((u) => u.role === 'user').length), change: '+5.4%', icon: Users, color: 'from-orange-500 to-orange-600' },
+    { title: 'Người dùng', value: String(users.filter((u) => u.role === 'user').length), change: '+5.4%', icon: Users, color: 'from-orange-500 to-orange-600' },
   ];
 
   const filteredOrders = orders.filter(
@@ -462,26 +462,7 @@ export default function AdminDashboard() {
     return Object.keys(errs).length === 0;
   };
 
-  const handleAddUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateUser()) return;
-    setUserLoading(true);
-    try {
-      await addUser({
-        name: userForm.name.trim(),
-        email: userForm.email.trim(),
-        phone: userForm.phone.trim(),
-        password: userForm.password,
-        role: userForm.role,
-        address: '',
-      });
-      toast.success(`Đã thêm người dùng "${userForm.name.trim()}" - có thể đăng nhập ngay!`);
-      setUserForm(INITIAL_USER_FORM);
-      setUserErrors({});
-      setShowAddUser(false);
-    } catch { toast.error('Không thể thêm người dùng'); }
-    finally { setUserLoading(false); }
-  };
+
 
   // ── JSX ────────────────────────────────────────────────────────────────────
   return (
@@ -635,95 +616,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* ── Add User Modal ────────────────────────────────────────────────── */}
-      {showAddUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
-          onClick={(e) => e.target === e.currentTarget && setShowAddUser(false)}>
-          <div className="bg-card border border-border rounded-xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-border">
-              <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-                <Users className="h-5 w-5 text-primary" /> Thêm người dùng mới
-              </h2>
-              <button onClick={() => setShowAddUser(false)} className="p-2 hover:bg-muted rounded-lg transition-colors">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <form onSubmit={handleAddUser} className="p-6 space-y-4">
-              {/* Name */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Họ và tên <span className="text-destructive">*</span></label>
-                <input type="text" value={userForm.name}
-                  onChange={(e) => { setUserForm((p) => ({ ...p, name: e.target.value })); setUserErrors((er) => ({ ...er, name: '' })); }}
-                  placeholder="Nguyễn Văn A"
-                  className={`w-full px-4 py-2.5 bg-input-background border ${userErrors.name ? 'border-destructive' : 'border-input'} rounded-lg focus:outline-none focus:ring-2 focus:ring-ring`} />
-                {userErrors.name && <p className="text-xs text-destructive mt-1">{userErrors.name}</p>}
-              </div>
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Email <span className="text-destructive">*</span></label>
-                <input type="email" value={userForm.email}
-                  onChange={(e) => { setUserForm((p) => ({ ...p, email: e.target.value })); setUserErrors((er) => ({ ...er, email: '' })); }}
-                  placeholder="email@example.com"
-                  className={`w-full px-4 py-2.5 bg-input-background border ${userErrors.email ? 'border-destructive' : 'border-input'} rounded-lg focus:outline-none focus:ring-2 focus:ring-ring`} />
-                {userErrors.email && <p className="text-xs text-destructive mt-1">{userErrors.email}</p>}
-              </div>
-              {/* Phone + Role */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Số điện thoại</label>
-                  <input type="tel" value={userForm.phone}
-                    onChange={(e) => setUserForm((p) => ({ ...p, phone: e.target.value }))}
-                    placeholder="0912345678"
-                    className="w-full px-4 py-2.5 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Vai trò</label>
-                  <select value={userForm.role}
-                    onChange={(e) => setUserForm((p) => ({ ...p, role: e.target.value as UserRole }))}
-                    className="w-full px-4 py-2.5 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring">
-                    <option value="user">👤 Khách hàng</option>
-                    <option value="staff">🧑‍💼 Nhân viên</option>
-                    <option value="admin">👑 Admin</option>
-                  </select>
-                </div>
-              </div>
-              {/* Password */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Mật khẩu <span className="text-destructive">*</span></label>
-                <input type="password" value={userForm.password}
-                  onChange={(e) => { setUserForm((p) => ({ ...p, password: e.target.value })); setUserErrors((er) => ({ ...er, password: '' })); }}
-                  placeholder="Ít nhất 6 ký tự"
-                  className={`w-full px-4 py-2.5 bg-input-background border ${userErrors.password ? 'border-destructive' : 'border-input'} rounded-lg focus:outline-none focus:ring-2 focus:ring-ring`} />
-                {userErrors.password && <p className="text-xs text-destructive mt-1">{userErrors.password}</p>}
-              </div>
-              {/* Confirm password */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Xác nhận mật khẩu <span className="text-destructive">*</span></label>
-                <input type="password" value={userForm.confirmPassword}
-                  onChange={(e) => { setUserForm((p) => ({ ...p, confirmPassword: e.target.value })); setUserErrors((er) => ({ ...er, confirmPassword: '' })); }}
-                  placeholder="Nhập lại mật khẩu"
-                  className={`w-full px-4 py-2.5 bg-input-background border ${userErrors.confirmPassword ? 'border-destructive' : 'border-input'} rounded-lg focus:outline-none focus:ring-2 focus:ring-ring`} />
-                {userErrors.confirmPassword && <p className="text-xs text-destructive mt-1">{userErrors.confirmPassword}</p>}
-              </div>
-              <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
-                💡 Người dùng có thể đăng nhập ngay sau khi được tạo
-              </p>
-              <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setShowAddUser(false)}
-                  className="flex-1 border border-border px-4 py-2.5 rounded-lg text-foreground hover:bg-muted transition-colors">
-                  Hủy
-                </button>
-                <button type="submit" disabled={userLoading}
-                  className="flex-1 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                  {userLoading
-                    ? <><Loader2 className="h-4 w-4 animate-spin" /><span>Đang lưu...</span></>
-                    : <><Save className="h-4 w-4" /><span>Thêm người dùng</span></>}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+
 
       {/* ── Main layout ───────────────────────────────────────────────────── */}
       <div className="min-h-screen bg-background flex">
@@ -790,7 +683,7 @@ export default function AdminDashboard() {
                activeSection === 'products' ? 'Quản lý sản phẩm' :
                activeSection === 'categories' ? 'Danh mục' :
                activeSection === 'orders' ? 'Đơn hàng' :
-               activeSection === 'customers' ? 'Khách hàng' : 'Cài đặt'}
+               activeSection === 'customers' ? 'Người dùng' : 'Cài đặt'}
             </h1>
             <div className="flex items-center gap-4">
               <button onClick={toggleTheme} className="p-2 hover:bg-muted rounded-lg transition-colors"
@@ -847,7 +740,7 @@ export default function AdminDashboard() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Tìm kiếm đơn hàng, khách hàng..."
+                      placeholder="Tìm kiếm đơn hàng, Người dùng..."
                       className="w-full pl-10 pr-4 py-2 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring" />
                   </div>
                 </div>
@@ -856,7 +749,7 @@ export default function AdminDashboard() {
                     <thead className="bg-muted">
                       <tr>
                         <th className="text-left px-6 py-3 text-sm font-medium text-foreground">Mã đơn</th>
-                        <th className="text-left px-6 py-3 text-sm font-medium text-foreground">Khách hàng</th>
+                        <th className="text-left px-6 py-3 text-sm font-medium text-foreground">Người dùng</th>
                         <th className="text-left px-6 py-3 text-sm font-medium text-foreground">Sản phẩm</th>
                         <th className="text-left px-6 py-3 text-sm font-medium text-foreground">Số tiền</th>
                         <th className="text-left px-6 py-3 text-sm font-medium text-foreground">Trạng thái</th>
@@ -1199,7 +1092,7 @@ export default function AdminDashboard() {
                       )}
                       <button onClick={() => { setUserForm({ ...INITIAL_USER_FORM, role: 'user' }); setShowAddUser(true); }}
                         className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors text-sm flex items-center gap-2">
-                        <Plus className="h-4 w-4" /> Thêm khách hàng
+                        <Plus className="h-4 w-4" /> Thêm Người dùng
                       </button>
                     </div>
                   </div>
@@ -1239,7 +1132,7 @@ export default function AdminDashboard() {
                                 }`}>
                                 <option value="admin">👑 Admin</option>
                                 <option value="staff">🧑‍💼 Nhân viên</option>
-                                <option value="user">👤 Khách hàng</option>
+                                <option value="user">👤 Người dùng</option>
                               </select>
                             ) : (
                               <span className={`text-xs font-medium px-2 py-1 rounded-full border ${
@@ -1247,7 +1140,7 @@ export default function AdminDashboard() {
                                 userItem.role === 'staff' ? 'bg-blue-100 text-blue-800 border-blue-200' :
                                 'bg-gray-100 text-gray-800 border-gray-200'
                               }`}>
-                                {userItem.role === 'admin' ? '👑 Admin' : userItem.role === 'staff' ? '🧑‍💼 Nhân viên' : '👤 Khách hàng'}
+                                {userItem.role === 'admin' ? '👑 Admin' : userItem.role === 'staff' ? '🧑‍💼 Nhân viên' : '👤 Người dùng'}
                               </span>
                             )}
                           </td>
@@ -1572,7 +1465,7 @@ export default function AdminDashboard() {
             <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar printable-area">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-4">
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Khách hàng</h3>
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Người dùng</h3>
                   <div className="space-y-2">
                     <p className="text-lg font-bold text-foreground">{selectedOrder.customerName}</p>
                     <div className="space-y-1.5">
@@ -1642,7 +1535,7 @@ export default function AdminDashboard() {
           <div className="bg-card rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="flex items-center justify-between p-6 border-b border-border">
               <h2 className="text-xl font-bold text-foreground">
-                {userForm.id ? 'Chỉnh sửa khách hàng' : 'Thêm khách hàng mới'}
+                {userForm.id ? 'Chỉnh sửa Người dùng' : 'Thêm Người dùng mới'}
               </h2>
               <button onClick={() => setShowAddUser(false)} className="p-2 hover:bg-muted rounded-xl transition-colors">
                 <X className="h-5 w-5 text-muted-foreground" />
@@ -1681,7 +1574,7 @@ export default function AdminDashboard() {
                     <label className="text-sm font-medium text-foreground mb-1.5 block">Vai trò</label>
                     <select value={userForm.role} onChange={e => setUserForm({...userForm, role: e.target.value as UserRole})}
                       className="w-full px-4 py-2 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring">
-                      <option value="user">Khách hàng</option>
+                      <option value="user">Người dùng</option>
                       <option value="staff">Nhân viên</option>
                       <option value="admin">Admin</option>
                     </select>
@@ -1708,7 +1601,7 @@ export default function AdminDashboard() {
                 <button type="submit" disabled={userLoading}
                   className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors flex items-center justify-center gap-2">
                   {userLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {userForm.id ? 'Lưu thay đổi' : 'Thêm khách hàng'}
+                  {userForm.id ? 'Lưu thay đổi' : 'Thêm Người dùng'}
                 </button>
               </div>
             </form>
