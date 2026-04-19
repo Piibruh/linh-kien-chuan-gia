@@ -125,3 +125,31 @@
 .admin-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #8c8f94;
 }
+
+/* Print Styles for Order Invoices */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .printable-area, .printable-area * {
+    visibility: visible;
+  }
+  .printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  /* Remove scroll limitations on the modal wrapper to allow multi-page print */
+  .fixed, .overflow-hidden, .overflow-y-auto {
+    position: absolute !important;
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

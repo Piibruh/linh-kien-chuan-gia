@@ -668,10 +668,10 @@ export default function OrdersList() {
                         <p className="text-sm text-gray-500 mt-1 font-medium">{getStatusLabel(selectedOrder.status)} • {formatDate(selectedOrder.createdAt)}</p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <button onClick={handlePrintOrder} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl transition-all text-sm font-bold shadow-sm">
+                        <button onClick={handlePrintOrder} className="no-print flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl transition-all text-sm font-bold shadow-sm">
                           <Printer className="h-4 w-4" /> In hóa đơn
                         </button>
-                        <button onClick={() => setSelectedOrder(null)} className="p-2 hover:bg-gray-200 rounded-xl transition-colors bg-white border border-gray-200 shadow-sm">
+                        <button onClick={() => setSelectedOrder(null)} className="no-print p-2 hover:bg-gray-200 rounded-xl transition-colors bg-white border border-gray-200 shadow-sm">
                           <X className="h-5 w-5 text-gray-500" />
                         </button>
                       </div>
