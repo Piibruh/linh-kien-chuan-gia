@@ -1,5 +1,4 @@
 import { ChevronRight, ChevronLeft } from 'lucide-react';
-import { Link } from 'react-router';
 import { ProductCard } from './product-card';
 import { useHorizontalScroll } from './hooks/useHorizontalScroll';
 
@@ -32,13 +31,13 @@ export function CategorySection({ title, products, viewAllLink }: CategorySectio
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-foreground">{title}</h2>
         {viewAllLink && (
-          <Link
-            to={viewAllLink}
+          <a
+            href={viewAllLink}
             className="flex items-center gap-1 text-primary hover:text-primary/80 transition-colors group"
           >
             <span className="font-medium">Xem tất cả</span>
             <ChevronRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-          </Link>
+          </a>
         )}
       </div>
 

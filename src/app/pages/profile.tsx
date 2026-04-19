@@ -145,7 +145,7 @@ export default function ProfilePage() {
                   user.role === 'staff' ? 'bg-primary/10 text-primary' :
                   'bg-muted text-muted-foreground'
                 }`}>
-                  {user.role === 'admin' ? '👑 Admin' : user.role === 'staff' ? '🧑‍💼 Nhân viên' : '👤 Người dùng'}
+                  {user.role === 'admin' ? '👑 Admin' : user.role === 'staff' ? '🧑‍💼 Nhân viên' : '👤 Khách hàng'}
                 </span>
               </div>
             </div>

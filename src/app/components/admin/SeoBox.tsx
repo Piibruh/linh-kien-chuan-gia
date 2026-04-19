@@ -12,7 +12,6 @@ interface SeoBoxProps {
   onSeoTitleChange: (v: string) => void;
   onSeoDescriptionChange: (v: string) => void;
   onSeoKeywordsChange: (v: string) => void;
-  onSlugChange?: (v: string) => void;
 }
 
 export function SeoBox({
@@ -25,7 +24,6 @@ export function SeoBox({
   onSeoTitleChange,
   onSeoDescriptionChange,
   onSeoKeywordsChange,
-  onSlugChange,
 }: SeoBoxProps) {
   const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
 
@@ -106,20 +104,6 @@ export function SeoBox({
           />
           <p className="mt-1 text-[11px] text-gray-400">Tối ưu: 50–60 ký tự</p>
         </div>
-
-        {/* Slug */}
-        {onSlugChange && (
-          <div>
-            <label className="block text-[13px] font-medium text-gray-700 mb-1.5">Đường dẫn (Slug)</label>
-            <input
-              type="text"
-              value={slug || ''}
-              onChange={(e) => onSlugChange(e.target.value)}
-              placeholder="duong-dan-san-pham"
-              className="w-full px-3 py-2 text-[13px] border border-[#8c8f94] rounded focus:outline-none focus:ring-1 focus:ring-[#2271b1] focus:border-[#2271b1]"
-            />
-          </div>
-        )}
 
         {/* SEO Description */}
         <div>

@@ -1,5 +1,4 @@
 import { ChevronRight, Zap, Shield, Truck, HeadphonesIcon } from 'lucide-react';
-import { Link } from 'react-router';
 
 export function HeroBanner() {
   return (
@@ -19,19 +18,13 @@ export function HeroBanner() {
               Arduino, ESP32, cảm biến và module cho mọi dự án DIY của bạn
             </p>
             <div className="flex flex-wrap gap-4">
-              <Link
-                to="/category/all"
-                className="bg-white text-primary px-6 py-3 rounded-lg font-medium hover:bg-white/90 transition-colors flex items-center gap-2"
-              >
+              <button className="bg-white text-primary px-6 py-3 rounded-lg font-medium hover:bg-white/90 transition-colors flex items-center gap-2">
                 Mua ngay
                 <ChevronRight className="h-5 w-5" />
-              </Link>
-              <Link
-                to="/category/all"
-                className="border-2 border-white text-white px-6 py-3 rounded-lg font-medium hover:bg-white/10 transition-colors"
-              >
+              </button>
+              <button className="border-2 border-white text-white px-6 py-3 rounded-lg font-medium hover:bg-white/10 transition-colors">
                 Xem catalog
-              </Link>
+              </button>
             </div>
           </div>
           <div className="hidden lg:block">

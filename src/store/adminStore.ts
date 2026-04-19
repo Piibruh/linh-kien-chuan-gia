@@ -23,8 +23,6 @@ const normalizeProduct = (p: any): Product => ({
   ...p,
   oldPrice: p.oldPrice ?? undefined,
   specs: p.specs || {},
-  rating: p.rating ?? 4.5,
-  sold: p.sold ?? 0,
   images: (p.images as string[]).map((img: string) =>
     img.startsWith('/') ? CATEGORY_IMAGES[p.category] ?? CATEGORY_IMAGES['Phụ kiện'] : img
   ),
@@ -76,8 +74,6 @@ export interface Order {
   shippedAt?: string | null;
   deliveredAt?: string | null;
   cancelledAt?: string | null;
-  cancellationReason?: string | null;
-  cancellationNote?: string | null;
 }
 
 export type StoredUser = User & {
@@ -314,11 +310,11 @@ interface AdminStore {
   // Orders
   orders: Order[];
   createOrder: (payload: CreateOrderPayload) => Promise<Order>;
-  updateOrderStatus: (id: string, status: OrderStatus, payload?: { reason?: string, note?: string }) => Promise<void>;
+  updateOrderStatus: (id: string, status: OrderStatus) => Promise<void>;
   deleteOrder: (id: string) => Promise<void>;
   setOrdersFromServer: (orders: Order[]) => void;
   bootstrapFromApi: () => Promise<void>;
-  cancelOrderByCustomer: (id: string, payload?: { reason?: string, note?: string }) => Promise<void>;
+  cancelOrderByCustomer: (id: string) => Promise<void>;
   patchOrderCustomerInfo: (
     id: string,
     payload: Partial<{
@@ -362,14 +358,7 @@ export const useAdminStore = create<AdminStore>()(
       storeConfig: {
         flashSaleThreshold: 0.2,
         flashSaleDurationHours: 6,
-        flashSaleItems: INITIAL_PRODUCTS.slice(0, 5).map((p, index) => {
-          // Discount 10% to 30% for the first 5 products
-          const discountPercent = 10 + index * 5; 
-          return {
-            productId: p.id,
-            flashSalePrice: Math.round(p.price * (1 - discountPercent / 100)),
-          };
-        }),
+        flashSaleItems: [],
       },
 
       // Product operations
@@ -585,7 +574,7 @@ export const useAdminStore = create<AdminStore>()(
         }
       },
 
-      updateOrderStatus: async (id, status, payload) => {
+      updateOrderStatus: async (id, status) => {
         const token = useAuthStore.getState().token;
         if (token) {
           try {
@@ -595,7 +584,7 @@ export const useAdminStore = create<AdminStore>()(
                 'Content-Type': 'application/json',
                 Authorization: `Bearer ${token}`,
               },
-              body: JSON.stringify({ status, reason: payload?.reason, note: payload?.note }),
+              body: JSON.stringify({ status }),
             });
             if (res.ok) {
               const { order: raw } = await res.json();
@@ -622,7 +611,7 @@ export const useAdminStore = create<AdminStore>()(
         await delay();
         set((state) => ({
           orders: state.orders.map((o) =>
-            o.id === id ? { ...o, status, updatedAt: nowIso(), cancellationReason: payload?.reason, cancellationNote: payload?.note } : o
+            o.id === id ? { ...o, status, updatedAt: nowIso() } : o
           ),
         }));
       },
@@ -632,20 +621,6 @@ export const useAdminStore = create<AdminStore>()(
       },
 
       bootstrapFromApi: async () => {
-        // Enforce 5 default flash sale items (10-30% off) if none set
-        if (get().storeConfig.flashSaleItems.length === 0) {
-          const defaultItems = INITIAL_PRODUCTS.slice(0, 5).map((p, index) => {
-            const discountPercent = 10 + index * 5; 
-            return {
-              productId: p.id,
-              flashSalePrice: Math.round(p.price * (1 - discountPercent / 100)),
-            };
-          });
-          set((state) => ({
-            storeConfig: { ...state.storeConfig, flashSaleItems: defaultItems }
-          }));
-        }
-
         try {
           const pr = await safeJsonFetch('/api/products');
           if (pr.ok) {
@@ -686,21 +661,18 @@ export const useAdminStore = create<AdminStore>()(
         }
       },
 
-      cancelOrderByCustomer: async (id, payload) => {
+      cancelOrderByCustomer: async (id) => {
         const token = useAuthStore.getState().token;
+        if (!token) throw new Error('Chưa đăng nhập');
+
+        // Offline / demo mode — cancel locally
         const localCancel = () => {
           set((state) => ({
             orders: state.orders.map((o) =>
-              o.id === id ? { ...o, status: 'cancelled' as OrderStatus, updatedAt: nowIso(), cancelledAt: nowIso(), cancellationReason: payload?.reason, cancellationNote: payload?.note } : o
+              o.id === id ? { ...o, status: 'cancelled' as OrderStatus, updatedAt: nowIso(), cancelledAt: nowIso() } : o
             ),
           }));
         };
-
-        if (!token) {
-          await delay();
-          localCancel();
-          return;
-        }
 
         try {
           const res = await fetch(`/api/orders/${encodeURIComponent(id)}/cancel`, {

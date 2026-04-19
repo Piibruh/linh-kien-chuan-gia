@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Slide {
@@ -20,7 +19,7 @@ const slides: Slide[] = [
     subtitle: 'Bắt đầu hành trình IoT',
     description: 'Trọn bộ Arduino UNO với 20+ linh kiện và hướng dẫn chi tiết',
     buttonText: 'Mua ngay',
-    buttonLink: '/category/vi-dieu-khien',
+    buttonLink: '#',
     image: 'https://images.unsplash.com/photo-1651231960369-3c31ab2a490c?w=800',
     gradient: 'from-primary to-accent',
   },
@@ -30,7 +29,7 @@ const slides: Slide[] = [
     subtitle: 'Flash Sale 24h',
     description: 'Giảm đến 40% cho tất cả cảm biến nhiệt độ, độ ẩm, ánh sáng',
     buttonText: 'Xem ngay',
-    buttonLink: '/category/cam-bien',
+    buttonLink: '#',
     image: 'https://images.unsplash.com/photo-1662528730018-45ff5ffb6c67?w=800',
     gradient: 'from-destructive to-orange-500',
   },
@@ -40,7 +39,7 @@ const slides: Slide[] = [
     subtitle: 'WiFi + Bluetooth',
     description: 'Vi điều khiển mạnh mẽ với kết nối không dây tích hợp',
     buttonText: 'Khám phá',
-    buttonLink: '/category/vi-dieu-khien',
+    buttonLink: '#',
     image: 'https://images.unsplash.com/photo-1634452015397-ad0686a2ae2d?w=800',
     gradient: 'from-accent to-primary',
   },
@@ -93,12 +92,9 @@ export function HeroSlider() {
                   <p className="text-lg md:text-xl text-white/90 mb-8 max-w-xl">
                     {slide.description}
                   </p>
-                  <Link
-                    to={slide.buttonLink}
-                    className="inline-flex items-center gap-2 bg-white text-primary px-8 py-4 rounded-lg font-bold hover:bg-white/90 transition-all active:scale-95 shadow-lg hover:shadow-xl"
-                  >
+                  <button className="bg-white text-primary px-8 py-4 rounded-lg font-bold hover:bg-white/90 transition-all active:scale-95 shadow-lg hover:shadow-xl">
                     {slide.buttonText}
-                  </Link>
+                  </button>
                 </div>
 
                 {/* Image */}

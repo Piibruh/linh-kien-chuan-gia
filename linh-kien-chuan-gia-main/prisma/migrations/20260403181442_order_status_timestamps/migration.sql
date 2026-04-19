@@ -1,5 +1,0 @@
--- AlterTable
-ALTER TABLE "Order" ADD COLUMN "cancelledAt" DATETIME;
-ALTER TABLE "Order" ADD COLUMN "confirmedAt" DATETIME;
-ALTER TABLE "Order" ADD COLUMN "deliveredAt" DATETIME;
-ALTER TABLE "Order" ADD COLUMN "shippedAt" DATETIME;

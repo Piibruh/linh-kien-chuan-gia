@@ -105,7 +105,7 @@ export function Header() {
   };
 
   return (
-    <header className="bg-card border-b border-border sticky top-0 z-50 shadow-sm" style={{ isolation: 'isolate' }}>
+    <header className="bg-card border-b border-border sticky top-0 z-50 shadow-sm">
       {/* Top Bar */}
       <div className="bg-secondary text-secondary-foreground">
         <div className="container mx-auto px-4">
@@ -136,10 +136,7 @@ export function Header() {
           </Link>
 
           {/* Search Bar */}
-          <form
-            className={`flex-1 max-w-2xl relative ${showSuggestions ? 'z-[9999]' : 'z-10'}`}
-            onSubmit={handleSearchSubmit}
-          >
+          <form className="flex-1 max-w-2xl relative" onSubmit={handleSearchSubmit}>
             <div className="relative flex items-center bg-input-background border border-input rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:border-transparent transition-all">
               <div className="hidden sm:flex items-center gap-1 px-3 border-r border-input bg-muted/30">
                 <select
@@ -172,7 +169,7 @@ export function Header() {
 
             {/* Search Suggestions Dropdown */}
             {showSuggestions && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden z-[9999]">
+              <div className="absolute top-full left-0 right-0 mt-2 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden z-50">
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-2.5 border-b border-border bg-muted/30">
                   <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider">

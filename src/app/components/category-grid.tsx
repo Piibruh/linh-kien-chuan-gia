@@ -1,5 +1,4 @@
 import { Cpu, Wifi, Gauge, Box, Wrench, Cog } from 'lucide-react';
-import { Link } from 'react-router';
 
 interface Category {
   id: string;
@@ -15,7 +14,7 @@ const categories: Category[] = [
     id: '1',
     name: 'Vi điều khiển',
     icon: Cpu,
-    count: 18,
+    count: 12,
     color: 'from-blue-500 to-blue-600',
     link: '/category/vi-dieu-khien',
   },
@@ -31,7 +30,7 @@ const categories: Category[] = [
     id: '3',
     name: 'Cảm biến',
     icon: Gauge,
-    count: 22,
+    count: 15,
     color: 'from-green-500 to-green-600',
     link: '/category/cam-bien',
   },
@@ -39,7 +38,7 @@ const categories: Category[] = [
     id: '4',
     name: 'Module',
     icon: Box,
-    count: 30,
+    count: 12,
     color: 'from-purple-500 to-purple-600',
     link: '/category/module',
   },
@@ -47,7 +46,7 @@ const categories: Category[] = [
     id: '5',
     name: 'Linh kiện cơ bản',
     icon: Cog,
-    count: 18,
+    count: 10,
     color: 'from-orange-500 to-orange-600',
     link: '/category/linh-kien-co-ban',
   },
@@ -55,7 +54,7 @@ const categories: Category[] = [
     id: '6',
     name: 'Phụ kiện',
     icon: Wrench,
-    count: 14,
+    count: 13,
     color: 'from-pink-500 to-pink-600',
     link: '/category/phu-kien',
   },
@@ -74,9 +73,9 @@ export function CategoryGrid() {
           {categories.map((category) => {
             const Icon = category.icon;
             return (
-              <Link
+              <a
                 key={category.id}
-                to={category.link}
+                href={category.link}
                 className="group bg-card border border-border rounded-xl p-6 hover:shadow-lg transition-all hover:scale-105 hover:-translate-y-1 cursor-pointer"
               >
                 <div className={`bg-gradient-to-br ${category.color} w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform`}>
@@ -88,7 +87,7 @@ export function CategoryGrid() {
                 <p className="text-sm text-muted-foreground text-center">
                   {category.count} sản phẩm
                 </p>
-              </Link>
+              </a>
             );
           })}
         </div>

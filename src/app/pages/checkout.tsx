@@ -233,7 +233,7 @@ export default function CheckoutPage() {
             <div className="bg-card border border-border rounded-xl p-6">
               <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
                 <User className="h-5 w-5 text-primary" />
-                Thông tin người dùng
+                Thông tin khách hàng
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -551,30 +551,6 @@ export default function CheckoutPage() {
                     </p>
                   </div>
                 </label>
-
-                {paymentMethod === 'online' && (
-                  <div className="mt-2 p-4 border-2 border-primary/20 rounded-lg bg-primary/5 flex flex-col items-center animate-in fade-in slide-in-from-top-2">
-                    <p className="text-sm font-medium text-foreground mb-3">Quét mã QR dưới đây để thanh toán:</p>
-                    <div className="bg-white p-2 rounded-xl shadow-sm border border-border">
-                      <img 
-                        src="/ảnh qr.jpg" 
-                        alt="Mã QR Thanh Toán" 
-                        className="w-48 h-48 sm:w-56 sm:h-56 object-contain rounded-lg"
-                      />
-                    </div>
-                    <div className="mt-4 w-full text-center space-y-1.5">
-                      <p className="text-sm text-muted-foreground">Vui lòng ghi nội dung chuyển khoản:</p>
-                      <div className="inline-block px-4 py-2 bg-background border border-border rounded-lg shadow-sm">
-                        <span className="font-mono text-lg font-bold text-primary tracking-wider select-all">
-                          {formData.phone || 'SỐ ĐIỆN THOẠI CỦA BẠN'}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Đơn hàng sẽ được xử lý sau khi thanh toán thành công
-                      </p>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>

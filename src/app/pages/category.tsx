@@ -259,8 +259,8 @@ export default function CategoryPage() {
                   price={product.price}
                   originalPrice={product.oldPrice}
                   image={product.images[0]}
-                  rating={product.rating ?? 4.5}
-                  reviews={product.sold ?? 0}
+                  rating={product.rating}
+                  reviews={product.sold}
                   inStock={product.stock > 0}
                   maxStock={product.stock}
                   specs={Object.entries(product.specs).slice(0, 3).map(([k, v]) => `${k}: ${v}`)}
