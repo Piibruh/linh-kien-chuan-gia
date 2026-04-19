@@ -28,6 +28,8 @@ import {
   MapPin,
   Printer,
   Zap,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useAuthStore, UserRole } from '../../store/authStore';
@@ -882,21 +884,47 @@ export default function AdminDashboard() {
                             </td>
                             <td className="px-6 py-4"><span className="text-sm font-medium text-foreground">{order.totalAmount.toLocaleString('vi-VN')}₫</span></td>
                             <td className="px-6 py-4">
-                              <select value={order.status}
-                                onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as OrderStatus)}
-                                disabled={loadingStates[`order-${order.id}`]}
-                                className={`text-xs font-medium px-2 py-1 rounded-full border cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${statusColors[order.status]}`}>
-                                <option value="pending">Chờ xử lý</option>
-                                <option value="processing">Đang xử lý</option>
-                                <option value="shipping">Đang giao</option>
-                                <option value="completed">Hoàn thành</option>
-                                <option value="cancelled">Đã hủy</option>
-                              </select>
+                              <span
+                                className={`text-xs font-medium px-2 py-1 rounded-full border inline-flex items-center gap-1.5 ${statusColors[order.status]}`}>
+                                {statusLabels[order.status]}
+                              </span>
                             </td>
                             <td className="px-6 py-4"><span className="text-sm text-muted-foreground">{new Date(order.createdAt).toLocaleDateString('vi-VN')}</span></td>
                             <td className="px-6 py-4">
                               <div className="flex items-center justify-center gap-1">
-                                <button onClick={() => handleViewOrder(order)} className="p-2 hover:bg-muted rounded-lg transition-colors" title="Xem">
+                                {order.status === 'pending' && (
+                                  <button
+                                    onClick={() => handleUpdateOrderStatus(order.id, 'processing')}
+                                    disabled={loadingStates[`order-${order.id}`]}
+                                    className="p-1.5 hover:bg-green-50 rounded transition-colors disabled:opacity-50"
+                                    title="Chấp nhận đơn hàng"
+                                  >
+                                    {loadingStates[`order-${order.id}`] ? (
+                                      <Loader2 className="w-4 h-4 animate-spin text-green-600" />
+                                    ) : (
+                                      <CheckCircle className="w-4 h-4 text-green-600" />
+                                    )}
+                                  </button>
+                                )}
+                                {(order.status === 'pending' || order.status === 'processing') && (
+                                  <button
+                                    onClick={() => {
+                                      if (confirm(`Bạn có chắc muốn hủy đơn hàng "${order.id}"?`)) {
+                                        handleUpdateOrderStatus(order.id, 'cancelled');
+                                      }
+                                    }}
+                                    disabled={loadingStates[`order-${order.id}`]}
+                                    className="p-1.5 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                                    title="Hủy đơn hàng"
+                                  >
+                                    {loadingStates[`order-${order.id}`] ? (
+                                      <Loader2 className="w-4 h-4 animate-spin text-red-600" />
+                                    ) : (
+                                      <XCircle className="w-4 h-4 text-red-600" />
+                                    )}
+                                  </button>
+                                )}
+                                <button onClick={() => handleViewOrder(order)} className="p-2 hover:bg-muted rounded-lg transition-colors" title="Xem chi tiết">
                                   <Eye className="h-4 w-4 text-muted-foreground" />
                                 </button>
                                 {isAdmin && (

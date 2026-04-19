@@ -583,21 +583,14 @@ export default function OrdersList() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            <select
-                              value={order.status}
-                              onChange={(e) =>
-                                handleUpdateStatus(order.id, e.target.value as OrderStatus)
-                              }
-                              disabled={updatingOrderId === order.id}
-                              className={`text-xs font-medium px-2 py-1 rounded border cursor-pointer focus:outline-none disabled:opacity-50 ${getStatusBadgeColor(
+                            <span
+                              className={`text-xs font-medium px-2 py-1 rounded-full border flex items-center gap-1.5 ${getStatusBadgeColor(
                                 order.status
                               )}`}
                             >
-                              <option value="pending">Chờ xử lý</option>
-                              <option value="processing">Đang xử lý</option>
-                              <option value="completed">Hoàn thành</option>
-                              <option value="cancelled">Đã hủy</option>
-                            </select>
+                              {getStatusIcon(order.status)}
+                              {getStatusLabel(order.status)}
+                            </span>
                             {updatingOrderId === order.id && (
                               <Loader2 className="w-3 h-3 animate-spin text-gray-400" />
                             )}
@@ -611,6 +604,30 @@ export default function OrdersList() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-center gap-1">
+                            {order.status === 'pending' && (
+                              <button
+                                onClick={() => handleUpdateStatus(order.id, 'processing')}
+                                disabled={updatingOrderId === order.id}
+                                className="p-1.5 hover:bg-green-50 rounded transition-colors disabled:opacity-50"
+                                title="Chấp nhận đơn hàng"
+                              >
+                                <CheckCircle className="w-4 h-4 text-green-600" />
+                              </button>
+                            )}
+                            {(order.status === 'pending' || order.status === 'processing') && (
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Bạn có chắc muốn hủy đơn hàng "${order.id}"?`)) {
+                                    handleUpdateStatus(order.id, 'cancelled');
+                                  }
+                                }}
+                                disabled={updatingOrderId === order.id}
+                                className="p-1.5 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                                title="Hủy đơn hàng"
+                              >
+                                <XCircle className="w-4 h-4 text-red-600" />
+                              </button>
+                            )}
                             <button
                               onClick={() => handleViewOrder(order)}
                               className="p-1.5 hover:bg-gray-100 rounded transition-colors"
