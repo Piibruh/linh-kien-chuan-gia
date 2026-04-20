@@ -439,9 +439,9 @@ export default function ProductsList() {
                         </td>
                         <td className="px-4 py-3">
                           <img
-                            src={product.images[0]}
+                            src={product.images ? product.images[0] : (product.image || 'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?w=100')}
                             alt={product.name}
-                            className="w-10 h-10 rounded object-cover border border-gray-200"
+                            className="w-10 h-10 rounded object-contain bg-[#f5f5f5] border border-gray-200"
                           />
                         </td>
                         <td className="px-4 py-3">

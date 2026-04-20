@@ -89,6 +89,8 @@ model DonHang {
   tongTien     Float
   trangThai    String    @default("Cho_Xu_Ly")
   diaChiGiao   String
+  lyDoHuy      String?   // Lý do hủy đơn hàng
+  ghiChuHuy   String?   // Ghi chú thêm khi hủy
 
   chiTiet   ChiTietDonHang[]
   thanhToan ThanhToan[]

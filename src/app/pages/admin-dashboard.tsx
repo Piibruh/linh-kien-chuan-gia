@@ -52,7 +52,7 @@ const sidebarItems: SidebarItem[] = [
   { id: 'products', label: 'Sản phẩm', icon: Package },
   { id: 'categories', label: 'Danh mục', icon: FolderTree },
   { id: 'orders', label: 'Đơn hàng', icon: ShoppingCart },
-  { id: 'customers', label: 'Khách hàng', icon: Users },
+  { id: 'customers', label: 'Người dùng', icon: Users },
   { id: 'settings', label: 'Cài đặt', icon: Settings },
 ];
 
@@ -183,9 +183,9 @@ export default function AdminDashboard() {
         fetch(`/api/users/${selectedUser.id}/history`, {
           headers: { Authorization: `Bearer ${token}` }
         })
-        .then(res => res.json())
-        .then(data => setUserHistory(data.histories || []))
-        .catch(() => setUserHistory([]));
+          .then(res => res.json())
+          .then(data => setUserHistory(data.histories || []))
+          .catch(() => setUserHistory([]));
       }
     } else {
       setUserHistory([]);
@@ -279,7 +279,7 @@ export default function AdminDashboard() {
 
   // ── Derived data ───────────────────────────────────────────────────────────
   const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
-  const formattedRevenue = totalRevenue >= 1000000 
+  const formattedRevenue = totalRevenue >= 1000000
     ? `${(totalRevenue / 1000000).toFixed(3)}Tr`
     : `${(totalRevenue / 1000).toFixed(0)}K`;
 
@@ -291,7 +291,7 @@ export default function AdminDashboard() {
     },
     { title: 'Đơn hàng mới', value: String(orders.length), change: '+8.2%', icon: ShoppingCart, color: 'from-blue-500 to-blue-600' },
     { title: 'Sản phẩm', value: String(products.length), change: '+23.1%', icon: Package, color: 'from-purple-500 to-purple-600' },
-    { title: 'Khách hàng', value: String(users.filter((u) => u.role === 'user').length), change: '+5.4%', icon: Users, color: 'from-orange-500 to-orange-600' },
+    { title: 'Người dùng', value: String(users.filter((u) => u.role === 'user').length), change: '+5.4%', icon: Users, color: 'from-orange-500 to-orange-600' },
   ];
 
   const filteredOrders = orders.filter(
@@ -305,10 +305,10 @@ export default function AdminDashboard() {
     const matchesSearch =
       u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.email.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     // RBAC: Staff only sees customers ('user' role)
     if (!isAdmin && u.role !== 'user') return false;
-    
+
     return matchesSearch;
   });
 
@@ -784,10 +784,10 @@ export default function AdminDashboard() {
           <header className="h-16 bg-card border-b border-border px-6 flex items-center justify-between sticky top-0 z-10">
             <h1 className="text-2xl font-bold text-foreground">
               {activeSection === 'dashboard' ? 'Dashboard' :
-               activeSection === 'products' ? 'Quản lý sản phẩm' :
-               activeSection === 'categories' ? 'Danh mục' :
-               activeSection === 'orders' ? 'Đơn hàng' :
-               activeSection === 'customers' ? 'Khách hàng' : 'Cài đặt'}
+                activeSection === 'products' ? 'Quản lý sản phẩm' :
+                  activeSection === 'categories' ? 'Danh mục' :
+                    activeSection === 'orders' ? 'Đơn hàng' :
+                      activeSection === 'customers' ? 'Người dùng' : 'Cài đặt'}
             </h1>
             <div className="flex items-center gap-4">
               <button onClick={toggleTheme} className="p-2 hover:bg-muted rounded-lg transition-colors"
@@ -835,7 +835,7 @@ export default function AdminDashboard() {
                 <div className="p-6 border-b border-border">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-bold text-foreground">Đơn hàng gần đây</h2>
-                    <button 
+                    <button
                       onClick={() => navigate('/admin/orders')}
                       className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors text-sm">
                       Xem tất cả
@@ -844,7 +844,7 @@ export default function AdminDashboard() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Tìm kiếm đơn hàng, khách hàng..."
+                      placeholder="Tìm kiếm đơn hàng, người dùng..."
                       className="w-full pl-10 pr-4 py-2 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring" />
                   </div>
                 </div>
@@ -853,7 +853,7 @@ export default function AdminDashboard() {
                     <thead className="bg-muted">
                       <tr>
                         <th className="text-left px-6 py-3 text-sm font-medium text-foreground">Mã đơn</th>
-                        <th className="text-left px-6 py-3 text-sm font-medium text-foreground">Khách hàng</th>
+                        <th className="text-left px-6 py-3 text-sm font-medium text-foreground">Người dùng</th>
                         <th className="text-left px-6 py-3 text-sm font-medium text-foreground">Sản phẩm</th>
                         <th className="text-left px-6 py-3 text-sm font-medium text-foreground">Số tiền</th>
                         <th className="text-left px-6 py-3 text-sm font-medium text-foreground">Trạng thái</th>
@@ -945,7 +945,7 @@ export default function AdminDashboard() {
                   <div className="p-6 space-y-6 printable-area">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div className="space-y-4">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-1">Thông tin khách hàng</h3>
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-1">Thông tin người dùng</h3>
                         <div className="space-y-1">
                           <p className="text-base font-bold text-foreground">{selectedOrder.customerName}</p>
                           <p className="text-sm flex items-center gap-2 text-muted-foreground"><Mail className="h-3.5 w-3.5" /> {selectedOrder.customerEmail}</p>
@@ -973,7 +973,7 @@ export default function AdminDashboard() {
                           return (
                             <div key={product.id} className="flex items-center gap-4 p-3 bg-muted/30 rounded-xl border border-border/50">
                               <div className="w-16 h-16 bg-muted rounded-lg overflow-hidden flex-shrink-0">
-                                <img src={pObj?.images[0] || 'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?w=100'} alt={product.name} className="w-full h-full object-cover" />
+                                <img src={pObj?.images ? (.images ? .images[0] : (.image || '')) : (pObj?.image || 'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?w=100')} alt={product.name} className="w-full h-full object-cover" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="text-sm font-bold text-foreground truncate">{product.name}</div>
@@ -987,7 +987,7 @@ export default function AdminDashboard() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
                       <div className="bg-muted/20 rounded-xl p-4 border border-border/50">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Ghi chú từ khách hàng</h3>
+                        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">Ghi chú từ người dùng</h3>
                         <p className="text-sm italic text-muted-foreground whitespace-pre-wrap">{selectedOrder.notes || 'Không có ghi chú'}</p>
                       </div>
                       <div className="space-y-2">
@@ -1022,11 +1022,10 @@ export default function AdminDashboard() {
                       <div>
                         <h2 className="text-xl font-bold text-foreground">{selectedUser.name}</h2>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
-                            selectedUser.role === 'admin' ? 'bg-red-100 text-red-700' :
-                            selectedUser.role === 'staff' ? 'bg-blue-100 text-blue-700' :
-                            'bg-gray-100 text-gray-700'
-                          }`}>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${selectedUser.role === 'admin' ? 'bg-red-100 text-red-700' :
+                              selectedUser.role === 'staff' ? 'bg-blue-100 text-blue-700' :
+                                'bg-gray-100 text-gray-700'
+                            }`}>
                             {selectedUser.role}
                           </span>
                           <span className="text-xs text-muted-foreground">ID: {selectedUser.id}</span>
@@ -1067,10 +1066,9 @@ export default function AdminDashboard() {
                               </div>
                               <div className="text-right">
                                 <p className="text-xs font-bold text-foreground">{o.totalAmount.toLocaleString('vi-VN')}₫</p>
-                                <p className={`text-[9px] font-bold uppercase ${
-                                  o.status === 'completed' ? 'text-green-600' :
-                                  o.status === 'cancelled' ? 'text-red-600' : 'text-blue-600'
-                                }`}>{o.status}</p>
+                                <p className={`text-[9px] font-bold uppercase ${o.status === 'completed' ? 'text-green-600' :
+                                    o.status === 'cancelled' ? 'text-red-600' : 'text-blue-600'
+                                  }`}>{o.status}</p>
                               </div>
                             </div>
                           ))
@@ -1145,7 +1143,7 @@ export default function AdminDashboard() {
                   {products.slice(0, 16).map((product) => (
                     <div key={product.id} className="border border-border rounded-lg p-4 hover:shadow-md transition-shadow">
                       <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden">
-                        <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
+                        <img src={product.images ? (.images ? .images[0] : (.image || '')) : (product.image || 'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?w=100')} alt={product.name} className="w-full h-full object-contain bg-[#f5f5f5]" />
                       </div>
                       <h3 className="font-medium text-foreground mb-1 line-clamp-2 min-h-[2.5rem]">{product.name}</h3>
                       <p className="text-sm text-muted-foreground mb-2">{product.category}</p>
@@ -1253,7 +1251,7 @@ export default function AdminDashboard() {
                       )}
                       <button onClick={() => { setUserForm({ ...INITIAL_USER_FORM, role: 'user' }); setShowAddUser(true); }}
                         className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors text-sm flex items-center gap-2">
-                        <Plus className="h-4 w-4" /> Thêm khách hàng
+                        <Plus className="h-4 w-4" /> Thêm người dùng
                       </button>
                     </div>
                   </div>
@@ -1286,22 +1284,20 @@ export default function AdminDashboard() {
                               <select value={userItem.role}
                                 onChange={(e) => handleUpdateUserRole(userItem.id, e.target.value as UserRole)}
                                 disabled={loadingStates[`user-${userItem.id}`] || userItem.id === user.id}
-                                className={`text-xs font-medium px-2 py-1 rounded-full border cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${
-                                  userItem.role === 'admin' ? 'bg-red-100 text-red-800 border-red-200' :
-                                  userItem.role === 'staff' ? 'bg-blue-100 text-blue-800 border-blue-200' :
-                                  'bg-gray-100 text-gray-800 border-gray-200'
-                                }`}>
+                                className={`text-xs font-medium px-2 py-1 rounded-full border cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${userItem.role === 'admin' ? 'bg-red-100 text-red-800 border-red-200' :
+                                    userItem.role === 'staff' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                                      'bg-gray-100 text-gray-800 border-gray-200'
+                                  }`}>
                                 <option value="admin">👑 Admin</option>
                                 <option value="staff">🧑‍💼 Nhân viên</option>
-                                <option value="user">👤 Khách hàng</option>
+                                <option value="user">👤 Người dùng</option>
                               </select>
                             ) : (
-                              <span className={`text-xs font-medium px-2 py-1 rounded-full border ${
-                                userItem.role === 'admin' ? 'bg-red-100 text-red-800 border-red-200' :
-                                userItem.role === 'staff' ? 'bg-blue-100 text-blue-800 border-blue-200' :
-                                'bg-gray-100 text-gray-800 border-gray-200'
-                              }`}>
-                                {userItem.role === 'admin' ? '👑 Admin' : userItem.role === 'staff' ? '🧑‍💼 Nhân viên' : '👤 Khách hàng'}
+                              <span className={`text-xs font-medium px-2 py-1 rounded-full border ${userItem.role === 'admin' ? 'bg-red-100 text-red-800 border-red-200' :
+                                  userItem.role === 'staff' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                                    'bg-gray-100 text-gray-800 border-gray-200'
+                                }`}>
+                                {userItem.role === 'admin' ? '👑 Admin' : userItem.role === 'staff' ? '🧑‍💼 Nhân viên' : '👤 Người dùng'}
                               </span>
                             )}
                           </td>
@@ -1354,14 +1350,14 @@ export default function AdminDashboard() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label className="text-sm font-medium text-foreground mb-1.5 block">Ngưỡng giảm giá Flash Sale (%)</label>
-                          <input type="number" min="0" max="100" required value={Math.round(configForm.flashSaleThreshold * 100)} onChange={e => setConfigForm({...configForm, flashSaleThreshold: Number(e.target.value) / 100})}
+                          <input type="number" min="0" max="100" required value={Math.round(configForm.flashSaleThreshold * 100)} onChange={e => setConfigForm({ ...configForm, flashSaleThreshold: Number(e.target.value) / 100 })}
                             className="w-full px-4 py-2 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
                             placeholder="VD: 20" />
                           <p className="text-xs text-muted-foreground mt-1">Các sản phẩm có % giảm &gt;= mức này sẽ vào Flash Sale.</p>
                         </div>
                         <div>
                           <label className="text-sm font-medium text-foreground mb-1.5 block">Thời gian mỗi phiên (giờ)</label>
-                          <input type="number" min="1" required value={configForm.flashSaleDurationHours} onChange={e => setConfigForm({...configForm, flashSaleDurationHours: Number(e.target.value)})}
+                          <input type="number" min="1" required value={configForm.flashSaleDurationHours} onChange={e => setConfigForm({ ...configForm, flashSaleDurationHours: Number(e.target.value) })}
                             className="w-full px-4 py-2 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
                             placeholder="VD: 6" />
                         </div>
@@ -1408,7 +1404,7 @@ export default function AdminDashboard() {
                                       <X className="w-3 h-3" />
                                     </button>
                                   </div>
-                                  <img src={p.images[0]} alt={p.name} className="w-14 h-14 rounded-lg object-cover flex-shrink-0 border border-border" />
+                                  <img src={(.images ? .images[0] : (.image || ''))} alt={p.name} className="w-14 h-14 rounded-lg object-cover flex-shrink-0 border border-border" />
                                   <div className="flex-1 min-w-0">
                                     <p className="text-xs font-semibold text-foreground line-clamp-2 leading-tight mb-1">{p.name}</p>
                                     <p className="text-[10px] text-muted-foreground mb-1.5">{p.category}</p>
@@ -1473,11 +1469,10 @@ export default function AdminDashboard() {
                                   {CATS.map(cat => (
                                     <button key={cat} type="button"
                                       onClick={() => setFsPickerCategory(cat)}
-                                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
-                                        fsPickerCategory === cat
+                                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${fsPickerCategory === cat
                                           ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
                                           : 'bg-card text-muted-foreground border-border hover:border-orange-400 hover:text-orange-500'
-                                      }`}>
+                                        }`}>
                                       {cat === 'all' ? '🔥 Tất cả' : cat}
                                     </button>
                                   ))}
@@ -1497,11 +1492,10 @@ export default function AdminDashboard() {
                                       const added = alreadyAdded.has(p.id);
                                       const priceVal = fsPriceMap[p.id] || '';
                                       return (
-                                        <div key={p.id} className={`border rounded-xl p-3 flex gap-3 transition-all ${
-                                          added ? 'border-orange-400 bg-orange-50/50 dark:bg-orange-900/10' : 'border-border bg-card hover:border-orange-300 hover:shadow-sm'
-                                        }`}>
+                                        <div key={p.id} className={`border rounded-xl p-3 flex gap-3 transition-all ${added ? 'border-orange-400 bg-orange-50/50 dark:bg-orange-900/10' : 'border-border bg-card hover:border-orange-300 hover:shadow-sm'
+                                          }`}>
                                           <div className="relative flex-shrink-0">
-                                            <img src={p.images[0]} alt={p.name} className="w-16 h-16 rounded-lg object-cover border border-border" />
+                                            <img src={(.images ? .images[0] : (.image || ''))} alt={p.name} className="w-16 h-16 rounded-lg object-cover border border-border" />
                                             {added && (
                                               <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center">
                                                 <span className="text-white text-[10px] font-bold">✓</span>
@@ -1583,7 +1577,7 @@ export default function AdminDashboard() {
                       </div>
                     </form>
                   </div>
-                  
+
                   {/* Keep the mockup ones as hints of future feature */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {[
@@ -1626,7 +1620,7 @@ export default function AdminDashboard() {
             <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar printable-area">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 <div className="space-y-4">
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Khách hàng</h3>
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Người dùng</h3>
                   <div className="space-y-2">
                     <p className="text-lg font-bold text-foreground">{selectedOrder.customerName}</p>
                     <div className="space-y-1.5">
@@ -1654,7 +1648,7 @@ export default function AdminDashboard() {
                     return (
                       <div key={product.id} className="flex items-center gap-5 p-4 bg-muted/20 rounded-2xl border border-border/50">
                         <div className="w-16 h-16 bg-card rounded-xl overflow-hidden shadow-sm flex-shrink-0 border border-border">
-                          <img src={pObj?.images[0] || 'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?w=100'} alt={product.name} className="w-full h-full object-cover" />
+                          <img src={(.images ? .images[0] : (.image || '')) || 'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?w=100'} alt={product.name} className="w-full h-full object-cover" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-base font-bold text-foreground truncate">{product.name}</div>
@@ -1696,7 +1690,7 @@ export default function AdminDashboard() {
           <div className="bg-card rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="flex items-center justify-between p-6 border-b border-border">
               <h2 className="text-xl font-bold text-foreground">
-                {userForm.id ? 'Chỉnh sửa khách hàng' : 'Thêm khách hàng mới'}
+                {userForm.id ? 'Chỉnh sửa người dùng' : 'Thêm người dùng mới'}
               </h2>
               <button onClick={() => setShowAddUser(false)} className="p-2 hover:bg-muted rounded-xl transition-colors">
                 <X className="h-5 w-5 text-muted-foreground" />
@@ -1706,36 +1700,36 @@ export default function AdminDashboard() {
               <div className="space-y-3">
                 <div>
                   <label className="text-sm font-medium text-foreground mb-1.5 block">Tên hiển thị <span className="text-destructive">*</span></label>
-                  <input type="text" required value={userForm.name} onChange={e => setUserForm({...userForm, name: e.target.value})}
+                  <input type="text" required value={userForm.name} onChange={e => setUserForm({ ...userForm, name: e.target.value })}
                     className="w-full px-4 py-2 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="Nguyễn Văn A" />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-foreground mb-1.5 block">Email {userForm.id ? '' : <span className="text-destructive">*</span>}</label>
-                  <input type="email" required={!userForm.id} disabled={!!userForm.id} value={userForm.email} onChange={e => setUserForm({...userForm, email: e.target.value})}
+                  <input type="email" required={!userForm.id} disabled={!!userForm.id} value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value })}
                     className="w-full px-4 py-2 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
                     placeholder="email@example.com" />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-foreground mb-1.5 block">Số điện thoại</label>
-                  <input type="text" value={userForm.phone} onChange={e => setUserForm({...userForm, phone: e.target.value})}
+                  <input type="text" value={userForm.phone} onChange={e => setUserForm({ ...userForm, phone: e.target.value })}
                     className="w-full px-4 py-2 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="09..." />
                 </div>
                 <div>
                   <label className="text-sm font-medium text-foreground mb-1.5 block">Địa chỉ nhận hàng</label>
-                  <input type="text" value={userForm.address} onChange={e => setUserForm({...userForm, address: e.target.value})}
+                  <input type="text" value={userForm.address} onChange={e => setUserForm({ ...userForm, address: e.target.value })}
                     className="w-full px-4 py-2 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
                     placeholder="123 ABC..." />
                 </div>
-                
+
                 {/* Only Admin can set role to staff/admin, Staff can only create/edit 'user' */}
                 {isAdmin && !userForm.id && (
                   <div>
                     <label className="text-sm font-medium text-foreground mb-1.5 block">Vai trò</label>
-                    <select value={userForm.role} onChange={e => setUserForm({...userForm, role: e.target.value as UserRole})}
+                    <select value={userForm.role} onChange={e => setUserForm({ ...userForm, role: e.target.value as UserRole })}
                       className="w-full px-4 py-2 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring">
-                      <option value="user">Khách hàng</option>
+                      <option value="user">Người dùng</option>
                       <option value="staff">Nhân viên</option>
                       <option value="admin">Admin</option>
                     </select>
@@ -1747,12 +1741,12 @@ export default function AdminDashboard() {
                   <>
                     <div>
                       <label className="text-sm font-medium text-foreground mb-1.5 block">Mật khẩu <span className="text-destructive">*</span></label>
-                      <input type="password" required value={userForm.password} onChange={e => setUserForm({...userForm, password: e.target.value})}
+                      <input type="password" required value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })}
                         className="w-full px-4 py-2 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring" />
                     </div>
                     <div>
                       <label className="text-sm font-medium text-foreground mb-1.5 block">Xác nhận mật khẩu <span className="text-destructive">*</span></label>
-                      <input type="password" required value={userForm.confirmPassword} onChange={e => setUserForm({...userForm, confirmPassword: e.target.value})}
+                      <input type="password" required value={userForm.confirmPassword} onChange={e => setUserForm({ ...userForm, confirmPassword: e.target.value })}
                         className="w-full px-4 py-2 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring" />
                     </div>
                   </>
@@ -1762,7 +1756,7 @@ export default function AdminDashboard() {
                 <button type="submit" disabled={userLoading}
                   className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors flex items-center justify-center gap-2">
                   {userLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {userForm.id ? 'Lưu thay đổi' : 'Thêm khách hàng'}
+                  {userForm.id ? 'Lưu thay đổi' : 'Thêm người dùng'}
                 </button>
               </div>
             </form>

@@ -188,7 +188,7 @@ export default function OrdersList() {
 
   const handleExportCSV = () => {
     const csvContent = [
-      ['Mã đơn', 'Khách hàng', 'Email', 'Tổng tiền', 'Trạng thái', 'Ngày tạo'],
+      ['Mã đơn', 'Người dùng', 'Email', 'Tổng tiền', 'Trạng thái', 'Ngày tạo'],
       ...filteredOrders.map((order) => [
         order.id,
         order.customerName,
@@ -481,7 +481,7 @@ export default function OrdersList() {
                         onClick={() => handleSort('customerName')}
                       >
                         <div className="flex items-center gap-1">
-                          Khách hàng
+                          Người dùng
                           {sortField === 'customerName' && (
                             sortOrder === 'asc' ? (
                               <ChevronUp className="w-3 h-3" />
@@ -662,7 +662,7 @@ export default function OrdersList() {
                     <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar printable-area">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                         <div className="space-y-4">
-                          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Thông tin khách hàng</h3>
+                          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Thông tin người dùng</h3>
                           <div className="space-y-2">
                             <p className="text-lg font-bold text-gray-900">{selectedOrder.customerName}</p>
                             <div className="space-y-1.5">
@@ -692,7 +692,7 @@ export default function OrdersList() {
                             return (
                               <div key={product.id} className="flex items-center gap-5 p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-blue-200 transition-colors">
                                 <div className="w-20 h-20 bg-white rounded-xl overflow-hidden flex-shrink-0 shadow-sm border border-gray-100">
-                                  <img src={pObj?.images[0] || 'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?w=100'} alt={product.name} className="w-full h-full object-cover" />
+                                  <img src={(.images ? .images[0] : (.image || '')) || 'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?w=100'} alt={product.name} className="w-full h-full object-cover" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="text-base font-bold text-gray-900 truncate">{product.name}</div>
@@ -712,7 +712,7 @@ export default function OrdersList() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pt-4 border-t border-gray-100">
                         <div className="p-5 bg-gray-50 rounded-2xl border border-gray-100">
                           <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-3">Ghi chú</h3>
-                          <p className="text-sm text-gray-600 italic font-medium leading-relaxed">{selectedOrder.notes || 'Không có ghi chú từ khách hàng'}</p>
+                          <p className="text-sm text-gray-600 italic font-medium leading-relaxed">{selectedOrder.notes || 'Không có ghi chú từ người dùng'}</p>
                         </div>
                         <div className="space-y-3">
                           <div className="flex justify-between items-center text-sm font-bold text-gray-500">

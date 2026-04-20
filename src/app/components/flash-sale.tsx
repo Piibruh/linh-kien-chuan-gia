@@ -1,207 +1,247 @@
-import { Zap, ChevronLeft, ChevronRight, Flame, Clock } from 'lucide-react';
-import { useMemo, useState, useEffect, useRef } from 'react';
-import { ProductCard } from './product-card';
+/**
+ * flash-sale.tsx
+ * Component Flash Sale — luôn hiển thị 5 sản phẩm, giảm 5-25%
+ * Thiết kế theo phong cách An Phát / Hacom / Hoàng Hà
+ */
+import { ChevronLeft, ChevronRight, Flame, Zap, Clock, TrendingDown } from 'lucide-react';
+import { useMemo, useState, useEffect } from 'react';
+import { FlashSaleCard } from './flash-sale-card';
 import { useHorizontalScroll } from './hooks/useHorizontalScroll';
 
-interface Product {
+// ── Types ──────────────────────────────────────────────────────────────────────
+
+export interface FlashSaleProduct {
   id: string;
   name: string;
   price: number;
-  originalPrice?: number;
+  originalPrice: number;
   image: string;
-  rating: number;
-  reviews: number;
   inStock: boolean;
-  badge?: string;
-  specs?: string[];
-  maxStock?: number;
+  discountPct: number;
+  maxStock: number;
+  stockLeft?: number;
 }
 
 interface FlashSaleProps {
-  products: Product[];
+  products: FlashSaleProduct[];
   durationHours?: number;
 }
 
-function CountdownUnit({ value, label }: { value: number; label: string }) {
+// ── Countdown ─────────────────────────────────────────────────────────────────
+
+function CountdownUnit({ value, label }: { value: string; label: string }) {
   return (
-    <div className="flex flex-col items-center">
-      <div className="relative">
-        <div className="bg-gray-900 dark:bg-black text-white font-mono text-xl sm:text-2xl font-black w-12 sm:w-14 h-12 sm:h-14 rounded-lg flex items-center justify-center shadow-lg border border-orange-500/30 tabular-nums">
-          {String(value).padStart(2, '0')}
-        </div>
-        {/* Flip line */}
-        <div className="absolute left-0 right-0 top-1/2 h-px bg-black/40 dark:bg-white/10 pointer-events-none" />
+    <div className="flex flex-col items-center gap-1">
+      <div className="bg-[#1c1c1c] text-white w-10 h-10 sm:w-11 sm:h-11 rounded-lg flex items-center justify-center text-xl sm:text-2xl font-black shadow-inner">
+        {value}
       </div>
-      <span className="text-[10px] text-orange-300 font-semibold uppercase tracking-wider mt-1">{label}</span>
+      <span className="text-[10px] sm:text-xs font-bold text-[#ffcd00] tracking-wider uppercase">
+        {label}
+      </span>
     </div>
   );
 }
 
-function FlashCountdown({ targetDate }: { targetDate: Date }) {
-  const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0 });
+function FlashSaleCountdown({ targetDate }: { targetDate: Date }) {
+  const [t, setT] = useState({ h: '00', m: '00', s: '00' });
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    const calc = () => {
-      const diff = Math.max(targetDate.getTime() - Date.now(), 0);
-      const h = Math.floor(diff / 3_600_000);
-      const m = Math.floor((diff % 3_600_000) / 60_000);
-      const s = Math.floor((diff % 60_000) / 1_000);
-      setTimeLeft({ h, m, s });
+    setIsClient(true);
+    const tick = () => {
+      const diff = targetDate.getTime() - Date.now();
+      if (diff <= 0) {
+        setT({ h: '00', m: '00', s: '00' });
+        return;
+      }
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setT({
+        h: String(h).padStart(2, '0'),
+        m: String(m).padStart(2, '0'),
+        s: String(s).padStart(2, '0'),
+      });
     };
-    calc();
-    const id = setInterval(calc, 1_000);
+    tick();
+    const id = setInterval(tick, 1_000);
     return () => clearInterval(id);
   }, [targetDate]);
 
+  const sep = (
+    <span className="text-white/80 font-black text-xl sm:text-2xl mb-4 select-none self-start mt-2">
+      :
+    </span>
+  );
   return (
-    <div className="flex items-center gap-1.5">
-      <CountdownUnit value={timeLeft.h} label="Giờ" />
-      <span className="text-orange-400 font-black text-xl mb-4 animate-pulse">:</span>
-      <CountdownUnit value={timeLeft.m} label="Phút" />
-      <span className="text-orange-400 font-black text-xl mb-4 animate-pulse">:</span>
-      <CountdownUnit value={timeLeft.s} label="Giây" />
+    <div className="flex flex-col items-end gap-1">
+      <div className="flex items-center gap-1 text-white font-bold text-[11px] sm:text-xs">
+        ⏱️ KẾT THÚC TRONG
+      </div>
+      <div className="flex items-start gap-1 sm:gap-2">
+        <CountdownUnit value={t.h} label="Giờ" />
+        {sep}
+        <CountdownUnit value={t.m} label="Phút" />
+        {sep}
+        <CountdownUnit value={t.s} label="Giây" />
+      </div>
     </div>
   );
 }
 
+// ── Main Component ─────────────────────────────────────────────────────────────
+
 export function FlashSale({ products, durationHours = 6 }: FlashSaleProps) {
   const { scrollContainerRef, canScrollLeft, canScrollRight, scroll } = useHorizontalScroll();
-  const availableProducts = products.filter((product) => product.inStock);
 
   const endDate = useMemo(() => {
-    const FLASH_SALE_KEY = 'electro-flash-sale-end';
-    const FLASH_SALE_DURATION_MS = durationHours * 60 * 60 * 1000;
+    const KEY = 'electro-flash-sale-end';
+    const MS = durationHours * 3_600_000;
     try {
-      const saved = localStorage.getItem(FLASH_SALE_KEY);
-      if (saved) {
-        const savedTime = parseInt(saved, 10);
-        if (!isNaN(savedTime) && savedTime > Date.now()) {
-          return new Date(savedTime);
-        }
-      }
-      const newEndTime = Date.now() + FLASH_SALE_DURATION_MS;
-      localStorage.setItem(FLASH_SALE_KEY, String(newEndTime));
-      return new Date(newEndTime);
+      const saved = parseInt(localStorage.getItem(KEY) ?? '', 10);
+      if (!isNaN(saved) && saved > Date.now()) return new Date(saved);
+      const end = Date.now() + MS;
+      localStorage.setItem(KEY, String(end));
+      return new Date(end);
     } catch {
-      return new Date(Date.now() + FLASH_SALE_DURATION_MS);
+      return new Date(Date.now() + MS);
     }
   }, [durationHours]);
 
-  const displayProducts = availableProducts.length > 0 ? availableProducts : products;
+  const getProductMaxStock = (id: string, discount: number) => 50;
+
+  // Luôn hiển thị TẤT CẢ sản phẩm: inStock trước, hết hàng sau (không tự biến mất)
+  const display = useMemo(() => {
+    const inStock = products.filter((p) => p.inStock);
+    const outOfStock = products.filter((p) => !p.inStock);
+    return [...inStock, ...outOfStock].slice(0, 8);
+  }, [products]);
+
+  if (display.length === 0) return null;
 
   return (
-    <section className="relative my-12 overflow-hidden">
-      {/* Fire gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-orange-600 via-red-600 to-rose-700 dark:from-orange-800 dark:via-red-900 dark:to-rose-950" />
-      {/* Animated ember pattern */}
+    <section className="relative my-8 sm:my-12 overflow-hidden mx-4 sm:mx-0">
+      {/* ─── Solid red background with subtle pattern like the image ─── */}
+      <div className="absolute inset-0 bg-[#df1a1a]" />
+      
+      {/* Tiny dot pattern overlay to simulate the grid texture */}
       <div
-        className="absolute inset-0 opacity-10"
+        className="absolute inset-0 opacity-10 mix-blend-overlay pointer-events-none"
         style={{
-          backgroundImage: `radial-gradient(ellipse at 20% 50%, #fff 0%, transparent 60%), radial-gradient(ellipse at 80% 30%, #fbbf24 0%, transparent 60%)`,
+          backgroundImage: 'radial-gradient(#000 1px, transparent 1px)',
+          backgroundSize: '12px 12px',
         }}
       />
-
-      <div className="relative container mx-auto px-4 py-10">
+      
+      <div className="relative container mx-auto px-4 py-8">
         {/* ─── Header ─── */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-8">
-          {/* Left: Title */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 relative z-10">
+          
+          {/* Left: Title + badges */}
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <div className="w-14 h-14 rounded-2xl bg-yellow-400 flex items-center justify-center shadow-xl">
-                <Flame className="h-8 w-8 text-orange-700 fill-orange-600" />
-              </div>
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full animate-ping opacity-70" />
+            {/* The flame box icon */}
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-b from-[#ffcd00] to-[#f87800] flex items-center justify-center shadow-lg flex-shrink-0">
+              <span className="text-xl">🔥</span>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight drop-shadow-lg">
-                  FLASH SALE
-                </h2>
-                <Zap className="h-7 w-7 text-yellow-300 fill-yellow-300 animate-bounce" />
+            
+            <div className="flex flex-col justify-center">
+              <h2 className="text-3xl sm:text-[34px] font-black text-white italic tracking-tight leading-none drop-shadow-md flex items-center gap-2">
+                FLASH SALE ⚡
+              </h2>
+              <div className="flex items-center gap-1.5 mt-1 sm:mt-1.5">
+                <div className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                <p className="text-white text-xs sm:text-sm font-medium tracking-wide">
+                  Giảm giá sốc — Số lượng có hạn!
+                </p>
               </div>
-              <p className="text-orange-200 text-sm font-medium mt-0.5">
-                ⚡ Giảm giá sốc — Số lượng có hạn!
-              </p>
             </div>
           </div>
 
           {/* Right: Countdown */}
-          <div className="flex flex-col items-start sm:items-end gap-2">
-            <div className="flex items-center gap-2 text-orange-200 text-sm font-medium">
-              <Clock className="h-4 w-4" />
-              <span>Kết thúc trong:</span>
+          <FlashSaleCountdown targetDate={endDate} />
+        </div>
+
+        {/* ─── Products List (Horizontal Scroll) ─── */}
+        <div className="group/nav relative -mx-4 sm:mx-0">
+          {/* Arrows (Desktop only) */}
+          {canScrollLeft && (
+            <button
+              onClick={() => scroll('left')}
+              className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/95 shadow-xl rounded-full flex items-center justify-center text-red-600 hover:bg-red-50 hover:text-red-700 hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/nav:opacity-100 hidden sm:flex border border-red-100"
+              aria-label="Scroll left"
+            >
+              <ChevronLeft className="w-6 h-6 ml-[-2px]" />
+            </button>
+          )}
+          {canScrollRight && (
+            <button
+              onClick={() => scroll('right')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/95 shadow-xl rounded-full flex items-center justify-center text-red-600 hover:bg-red-50 hover:text-red-700 hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/nav:opacity-100 hidden sm:flex border border-red-100"
+              aria-label="Scroll right"
+            >
+              <ChevronRight className="w-6 h-6 mr-[-2px]" />
+            </button>
+          )}
+
+          {/* Track */}
+          <div
+            ref={scrollContainerRef}
+            className="flex gap-4 sm:gap-5 overflow-x-auto snap-x snap-mandatory px-4 sm:px-1 pb-6 pt-2 scrollbar-none"
+            style={{
+              WebkitOverflowScrolling: 'touch',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+            }}
+          >
+            {display.map((product) => {
+              const maxStock = product.maxStock ?? 50;
+              // Nếu hết hàng: stockLeft = 0, không fill random
+              const stockLeft = product.inStock
+                ? (product.stockLeft != null ? product.stockLeft : Math.max(1, Math.floor(maxStock * 0.3)))
+                : 0;
+              return (
+                <div key={product.id} className="snap-start snap-always shrink-0 transform-gpu relative z-10">
+                  <FlashSaleCard
+                    id={product.id}
+                    name={product.name}
+                    price={product.price}
+                    originalPrice={product.originalPrice}
+                    image={product.image}
+                    discountPct={product.discountPct}
+                    inStock={product.inStock}
+                    maxStock={maxStock}
+                    stockLeft={stockLeft}
+                  />
+                </div>
+              );
+            })}
+            
+            {/* View More Card for horizontal scroll */}
+            <div className="snap-start snap-always shrink-0 flex items-center justify-center relative z-10 pb-6 pt-2">
+              <a
+                href="/products"
+                className="group flex flex-col items-center justify-center bg-white/10 hover:bg-white/20 w-[140px] rounded-2xl border border-white/20 transition-all cursor-pointer backdrop-blur-sm shadow-xl"
+                style={{ height: 'calc(100% - 24px)' }}
+              >
+                <div className="w-12 h-12 rounded-full bg-white text-red-600 flex items-center justify-center mb-3 group-hover:scale-110 shadow-lg transition-transform">
+                  <ChevronRight className="w-6 h-6 ml-[2px]" />
+                </div>
+                <span className="text-white font-bold text-sm">Xem tất cả</span>
+              </a>
             </div>
-            <FlashCountdown targetDate={endDate} />
           </div>
         </div>
 
-        {/* ─── Products ─── */}
-        {displayProducts.length === 0 ? (
-          <div className="rounded-2xl bg-white/10 backdrop-blur p-10 text-center border border-white/20">
-            <p className="text-2xl font-bold text-white mb-2">Flash Sale đã cháy hàng! 🔥</p>
-            <p className="text-orange-200 text-sm">Các ưu đãi siêu hot đã được săn hết. Ghé lại sau nhé!</p>
+        {/* Footer Area inside Red Section */}
+        <div className="mt-2 flex items-center justify-between text-yellow-300 font-bold text-xs sm:text-sm px-1 relative z-10 w-full">
+          <div className="flex items-center gap-1.5">
+            <span>🔥</span>
+            <span>{display.length} sản phẩm đang giảm giá</span>
           </div>
-        ) : (
-          <div className="relative group">
-            {/* Left Arrow */}
-            <button
-              onClick={() => scroll('left')}
-              disabled={!canScrollLeft}
-              className={`absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-20 w-11 h-11 bg-white text-orange-600 rounded-full shadow-2xl border-2 border-orange-200 flex items-center justify-center transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110 hover:bg-orange-50 ${
-                !canScrollLeft ? 'cursor-not-allowed opacity-0! group-hover:opacity-30' : ''
-              }`}
-              aria-label="Scroll left"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-
-            {/* Scroll container */}
-            <div
-              ref={scrollContainerRef}
-              className="flex gap-4 overflow-x-auto scroll-smooth pb-2"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-            >
-              {displayProducts.map((product) => (
-                <div
-                  key={product.id}
-                  className="flex-shrink-0 w-[250px] sm:w-[280px] rounded-2xl overflow-hidden shadow-xl ring-2 ring-white/20 hover:ring-yellow-300/70 transition-all duration-300 hover:-translate-y-1"
-                >
-                  {/* Flash badge ribbon */}
-                  {product.badge && (
-                    <div className="relative">
-                      <div className="absolute top-2 left-2 z-10 bg-yellow-400 text-orange-800 text-xs font-black px-2 py-1 rounded-lg shadow flex items-center gap-1">
-                        <Zap className="h-3 w-3 fill-current" />
-                        {product.badge}
-                      </div>
-                    </div>
-                  )}
-                  <ProductCard {...product} />
-                </div>
-              ))}
-            </div>
-
-            {/* Right Arrow */}
-            <button
-              onClick={() => scroll('right')}
-              disabled={!canScrollRight}
-              className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-20 w-11 h-11 bg-white text-orange-600 rounded-full shadow-2xl border-2 border-orange-200 flex items-center justify-center transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110 hover:bg-orange-50 ${
-                !canScrollRight ? 'cursor-not-allowed opacity-0! group-hover:opacity-30' : ''
-              }`}
-              aria-label="Scroll right"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          </div>
-        )}
-
-        {/* Products count indicator */}
-        {displayProducts.length > 0 && (
-          <div className="flex items-center justify-center mt-6 gap-2">
-            <span className="text-orange-200 text-sm">
-              🔥 {displayProducts.length} sản phẩm đang giảm giá
-            </span>
-          </div>
-        )}
+          <a href="/products" className="hover:text-white transition-colors cursor-pointer flex items-center gap-1">
+            Xem tất cả <ChevronRight className="w-3 h-3" />
+          </a>
+        </div>
       </div>
     </section>
   );

@@ -15,6 +15,7 @@ import {
   Trash2,
   User,
   X,
+  XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -22,6 +23,7 @@ import productsJson from '../../data/products.json';
 import { useAdminStore } from '../../store/adminStore';
 import { useAuthStore } from '../../store/authStore';
 import { formatVnd } from '../../shared/lib/money';
+import { CancelOrderModal, CANCEL_REASONS_ADMIN } from '../components/cancel-order-modal';
 
 type ProductRow = {
   id: string;
@@ -51,6 +53,8 @@ export default function AdminPage() {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Partial<ProductRow>>({});
+  /** ID đơn hàng đang chờ chọn lý do hủy (admin) */
+  const [cancelTarget, setCancelTarget] = useState<string | null>(null);
 
   const selectedCount = Object.values(selectedIds).filter(Boolean).length;
 
@@ -474,7 +478,7 @@ export default function AdminPage() {
               <p className="text-sm text-muted-foreground">{orders.length} đơn hàng</p>
             </div>
             <div className="overflow-x-auto">
-              <table className="min-w-[1000px] w-full">
+              <table className="min-w-[1100px] w-full">
                 <thead className="bg-muted">
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-bold text-foreground">Mã đơn</th>
@@ -492,6 +496,16 @@ export default function AdminPage() {
                       <td className="px-4 py-3">
                         <div className="text-sm font-medium text-foreground">{o.customerName}</div>
                         <div className="text-xs text-muted-foreground">{o.customerEmail}</div>
+                        {/* Hiển thị lý do hủy nếu có */}
+                        {o.status === 'cancelled' && o.cancelReason && (
+                          <div className="mt-1 flex items-center gap-1">
+                            <XCircle className="h-3 w-3 text-destructive flex-shrink-0" />
+                            <span className="text-xs text-destructive line-clamp-1">
+                              {CANCEL_REASONS_ADMIN.find(r => r.value === o.cancelReason)?.label
+                                ?? o.cancelReason}
+                            </span>
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm text-foreground">
                         {o.products.map(p => `${p.name} x${p.quantity}`).join(', ')}
@@ -501,8 +515,16 @@ export default function AdminPage() {
                         <select
                           value={o.status}
                           onChange={(e) => {
-                            updateOrderStatus(o.id, e.target.value as any);
-                            toast.success(`Đã cập nhật trạng thái đơn ${o.id}`);
+                            const newStatus = e.target.value;
+                            if (newStatus === 'cancelled') {
+                              // Mở modal chọn lý do hủy
+                              setCancelTarget(o.id);
+                              // Reset select về giá trị hiện tại (modal sẽ thực hiện)
+                              e.target.value = o.status;
+                            } else {
+                              updateOrderStatus(o.id, newStatus as any);
+                              toast.success(`Đã cập nhật trạng thái đơn ${o.id}`);
+                            }
                           }}
                           className={`text-xs font-bold px-2 py-1 rounded-full border bg-background ${
                             o.status === 'completed' ? 'text-green-500 border-green-500' :
@@ -621,6 +643,46 @@ export default function AdminPage() {
           </section>
         )}
       </main>
+
+      {/* Admin Cancel Order Modal */}
+      {cancelTarget && (() => {
+        const order = orders.find(o => o.id === cancelTarget);
+        if (!order) return null;
+        return (
+          <CancelOrderModal
+            orderId={cancelTarget}
+            isAdmin={true}
+            onConfirm={async (reason, note) => {
+              // Gọi API cancel với reason (admin dùng cancelOrderByCustomer cũng được
+              // vì admin có quyền hủy bất kỳ đơn nào)
+              const token = useAuthStore.getState().token;
+              const res = await fetch(`/api/orders/${encodeURIComponent(cancelTarget)}/cancel`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                body: JSON.stringify({ reason, note }),
+              });
+              if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                // Nếu API không có (offline), cập nhật local store
+                if (res.status === 0 || res.status >= 500) {
+                  updateOrderStatus(cancelTarget, 'cancelled');
+                  toast.success(`Đã hủy đơn ${cancelTarget}`);
+                  setCancelTarget(null);
+                  return;
+                }
+                throw new Error(typeof data?.error === 'string' ? data.error : 'Không thể hủy đơn hàng');
+              }
+              updateOrderStatus(cancelTarget, 'cancelled');
+              toast.success(`Đã hủy đơn ${cancelTarget}`);
+              setCancelTarget(null);
+            }}
+            onClose={() => setCancelTarget(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

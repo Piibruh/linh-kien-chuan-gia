@@ -551,6 +551,25 @@ export default function CheckoutPage() {
                     </p>
                   </div>
                 </label>
+
+                {/* Hiển thị QR Code khi chọn chuyển khoản ngân hàng */}
+                {paymentMethod === 'online' && (
+                  <div className="p-6 border-2 border-primary/20 bg-primary/5 rounded-xl flex flex-col items-center justify-center mt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <p className="text-sm font-bold text-foreground mb-4 text-center uppercase tracking-wide">
+                      Quét mã QR để thanh toán
+                    </p>
+                    <div className="bg-white p-2 rounded-xl shadow-sm border border-border">
+                      <img 
+                        src="/ảnh%20qr.jpg" 
+                        alt="QR Code Thanh Toán" 
+                        className="w-48 h-48 sm:w-56 sm:h-56 object-contain rounded-lg" 
+                      />
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-4 text-center font-medium bg-background px-4 py-2 rounded-lg border border-border">
+                      Lưu ý: Bạn vui lòng ghi chú <span className="font-bold text-primary">Số Điện Thoại</span> hoặc <span className="font-bold text-primary">Họ Tên</span> trong nội dung chuyển khoản.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

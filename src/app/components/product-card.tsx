@@ -2,6 +2,7 @@ import { memo, useCallback, useState } from 'react';
 import { ShoppingCart, Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCartStore } from '../../store/cartStore';
+import { useReviewStore } from '../../store/reviewStore';
 
 interface ProductCardProps {
   id: string;
@@ -31,6 +32,9 @@ export const ProductCard = memo(function ProductCard({
   maxStock = 50,
 }: ProductCardProps) {
   const addItem = useCartStore((s) => s.addItem);
+  const getProductSummary = useReviewStore((s) => s.getProductSummary);
+  const reviewSummary = getProductSummary(id);
+
   const discount = originalPrice ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
   const [isAdding, setIsAdding] = useState(false);
 
@@ -106,21 +110,30 @@ export const ProductCard = memo(function ProductCard({
         )}
 
         {/* Rating */}
-        <div className="flex items-center gap-2 mb-3">
-          <div className="flex items-center">
-            {[...Array(5)].map((_, i) => (
-              <Star
-                key={i}
-                className={`h-3 w-3 ${
-                  i < Math.floor(rating)
-                    ? 'fill-yellow-400 text-yellow-400'
-                    : 'text-muted'
-                }`}
-              />
-            ))}
+        {reviewSummary.showRating && reviewSummary.totalReviews > 0 && (
+          <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center">
+              {[...Array(5)].map((_, i) => {
+                const full = Math.floor(reviewSummary.averageRating);
+                const hasHalf = reviewSummary.averageRating - full >= 0.3;
+                return (
+                  <Star
+                    key={i}
+                    className={`h-3 w-3 ${
+                      i < full
+                        ? 'fill-yellow-400 text-yellow-400'
+                        : i === full && hasHalf
+                        ? 'fill-yellow-200 text-yellow-400'
+                        : 'text-muted fill-gray-200'
+                    }`}
+                  />
+                );
+              })}
+            </div>
+            <span className="text-[11px] font-bold text-yellow-500 mr-1">{reviewSummary.averageRating.toFixed(1)}</span>
+            <span className="text-xs text-muted-foreground">({reviewSummary.totalReviews})</span>
           </div>
-          <span className="text-xs text-muted-foreground">({reviews})</span>
-        </div>
+        )}
 
         {/* Price */}
         <div className="mb-3">

@@ -7,7 +7,7 @@ import { useAdminStore, useEffectiveProducts } from '../../store/adminStore';
 import { Newsletter } from '../components/newsletter';
 import { TrustSection } from '../components/trust-section';
 import { ArrowUp } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 export default function HomePage() {
   const { storeConfig } = useAdminStore();
@@ -22,70 +22,91 @@ export default function HomePage() {
 
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  // Flash sale: products with discount >= threshold OR manually added
-  // Fallback: if fewer than 4 qualifying, fill with best-discounted products that have oldPrice
-  const flashSaleProducts = (() => {
-    const FLASH_THRESHOLD = storeConfig?.flashSaleThreshold || 0.15; // lowered to 15% default
-    const manualIds = new Set((storeConfig?.flashSaleItems || []).map((item: any) => item.productId));
+  // ── Flash Sale: luôn 5 sản phẩm, giảm 5-25%, không dưới 5% ──────────────────
+  const flashSaleProducts = useMemo(() => {
+    const MIN_DISCOUNT = 0.05; // 5%
+    const MAX_DISCOUNT = 0.25; // 25%
+    const TARGET_COUNT = 5;
 
+    const manualIds = new Set((storeConfig?.flashSaleItems || []).map((item: any) => item.productId));
+    const manualPrices = new Map<string, number>(
+      (storeConfig?.flashSaleItems || []).map((item: any) => [item.productId, item.flashSalePrice])
+    );
+
+    // Helper: tính % giảm giá đảm bảo trong khoảng 5-25%
+    const clampDiscount = (pct: number) => Math.min(MAX_DISCOUNT, Math.max(MIN_DISCOUNT, pct));
+
+    // Tính giá flash sale cho một sản phẩm
+    const toFlashItem = (p: typeof products[0], forcedPct?: number) => {
+      const baseOldPrice = p.oldPrice ?? p.price;
+      let pct: number;
+      let salePrice: number;
+
+      if (manualPrices.has(p.id)) {
+        // Admin đặt giá tay
+        salePrice = manualPrices.get(p.id)!;
+        pct = (baseOldPrice - salePrice) / baseOldPrice;
+        // Đảm bảo không dưới 5%
+        if (pct < MIN_DISCOUNT) {
+          salePrice = Math.round(baseOldPrice * (1 - MIN_DISCOUNT));
+          pct = MIN_DISCOUNT;
+        }
+      } else if (p.oldPrice && p.oldPrice > p.price) {
+        pct = (p.oldPrice - p.price) / p.oldPrice;
+        salePrice = p.price;
+        pct = clampDiscount(pct);
+        salePrice = Math.round(p.oldPrice * (1 - pct));
+      } else if (forcedPct != null) {
+        pct = forcedPct;
+        salePrice = Math.round(p.price * (1 - pct));
+      } else {
+        // Tự động tạo discount ngẫu nhiên 5-20% dựa trên id (deterministic)
+        const hash = p.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+        pct = MIN_DISCOUNT + (hash % 16) / 100; // 5% → 20%
+        salePrice = Math.round(p.price * (1 - pct));
+      }
+
+      const discountPct = Math.round(pct * 100);
+      const oldPrice = p.oldPrice ?? p.price;
+
+      return {
+        id: p.id,
+        name: p.name,
+        price: salePrice,
+        originalPrice: oldPrice,
+        image: (.images ? .images[0] : (.image || '')),
+        inStock: p.stock > 0,
+        discountPct,
+        maxStock: p.stock,
+        stockLeft: p.stock,
+      };
+    };
+
+    // 1. Lấy sản phẩm manual + có giảm giá đủ điều kiện
     const qualified = products
       .filter((p) => {
-        const isManual = manualIds.has(p.id);
-        const discount = p.oldPrice ? ((p.oldPrice - p.price) / p.oldPrice) : 0;
-        return isManual || discount >= FLASH_THRESHOLD;
+        if (manualIds.has(p.id)) return true;
+        const pct = p.oldPrice ? (p.oldPrice - p.price) / p.oldPrice : 0;
+        return pct >= MIN_DISCOUNT;
       })
-      .map((p) => {
-        const discount = p.oldPrice ? Math.round(((p.oldPrice - p.price) / p.oldPrice) * 100) : 0;
-        return {
-          id: p.id,
-          name: p.name,
-          price: p.price,
-          originalPrice: p.oldPrice,
-          image: p.images[0],
-          rating: Math.floor(p.rating),
-          reviews: p.sold,
-          inStock: p.stock > 0,
-          badge: discount > 0 ? `-${discount}%` : undefined,
-          specs: Object.entries(p.specs || {}).slice(0, 3).map(([k, v]) => `${k}: ${v}`),
-          maxStock: p.stock,
-          discountPct: discount,
-        };
-      })
-      .sort((a, b) => b.discountPct - a.discountPct)
-      .slice(0, 8);
+      .map((p) => toFlashItem(p))
+      .sort((a, b) => b.discountPct - a.discountPct);
 
-    // Always ensure at least 4 products by filling with best-discounted inStock products
-    if (qualified.length < 4) {
-      const existingIds = new Set(qualified.map(p => p.id));
-      const fillers = products
-        .filter((p) => p.stock > 0 && p.oldPrice && !existingIds.has(p.id))
-        .sort((a, b) => {
-          const dA = a.oldPrice ? (a.oldPrice - a.price) / a.oldPrice : 0;
-          const dB = b.oldPrice ? (b.oldPrice - b.price) / b.oldPrice : 0;
-          return dB - dA;
-        })
-        .slice(0, 8 - qualified.length)
-        .map((p) => {
-          const discount = p.oldPrice ? Math.round(((p.oldPrice - p.price) / p.oldPrice) * 100) : 0;
-          return {
-            id: p.id,
-            name: p.name,
-            price: p.price,
-            originalPrice: p.oldPrice,
-            image: p.images[0],
-            rating: Math.floor(p.rating),
-            reviews: p.sold,
-            inStock: p.stock > 0,
-            badge: discount > 0 ? `-${discount}%` : undefined,
-            specs: Object.entries(p.specs || {}).slice(0, 3).map(([k, v]) => `${k}: ${v}`),
-            maxStock: p.stock,
-            discountPct: discount,
-          };
-        });
-      return [...qualified, ...fillers];
+    if (qualified.length >= TARGET_COUNT) {
+      return qualified.slice(0, TARGET_COUNT + 3); // hiển thị vài cái thừa để scroll
     }
-    return qualified;
-  })();
+
+    // 2. Fill up đến 5 từ sản phẩm còn hàng, tạo discount tự động
+    const existingIds = new Set(qualified.map((p) => p.id));
+    const fillers = products
+      .filter((p) => p.stock > 0 && !existingIds.has(p.id))
+      .sort((a, b) => (b.sold ?? 0) - (a.sold ?? 0)) // ưu tiên bán chạy
+      .slice(0, TARGET_COUNT - qualified.length)
+      .map((p) => toFlashItem(p));
+
+    return [...qualified, ...fillers];
+  }, [products, storeConfig]);
+
 
   // Best selling microcontrollers
   const bestMicrocontrollers = products
@@ -97,7 +118,7 @@ export default function HomePage() {
       name: p.name,
       price: p.price,
       originalPrice: p.oldPrice,
-      image: p.images[0],
+      image: (.images ? .images[0] : (.image || '')),
       rating: Math.floor(p.rating),
       reviews: p.sold,
       inStock: p.stock > 0,
@@ -115,7 +136,7 @@ export default function HomePage() {
       name: p.name,
       price: p.price,
       originalPrice: p.oldPrice,
-      image: p.images[0],
+      image: (.images ? .images[0] : (.image || '')),
       rating: Math.floor(p.rating),
       reviews: p.sold,
       inStock: p.stock > 0,
@@ -133,7 +154,7 @@ export default function HomePage() {
       name: p.name,
       price: p.price,
       originalPrice: p.oldPrice,
-      image: p.images[0],
+      image: (.images ? .images[0] : (.image || '')),
       rating: Math.floor(p.rating),
       reviews: p.sold,
       inStock: p.stock > 0,

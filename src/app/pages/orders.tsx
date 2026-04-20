@@ -13,6 +13,7 @@ import {
 import { useAuthStore } from '../../store/authStore';
 import { useAdminStore, type Order, type OrderStatus } from '../../store/adminStore';
 import { toast } from 'sonner';
+import { CancelOrderModal, CANCEL_REASONS_USER } from '../components/cancel-order-modal';
 
 interface UIOrder {
   id: string;
@@ -173,6 +174,7 @@ export default function OrdersPage() {
   const [editWard, setEditWard] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   // Guard (also protected at router level)
   if (!isLoggedIn || !user) {
@@ -585,19 +587,7 @@ export default function OrdersPage() {
                     <button
                       type="button"
                       disabled={cancelling}
-                      onClick={async () => {
-                        if (!window.confirm('Bạn chắc chắn muốn hủy đơn hàng này?')) return;
-                        setCancelling(true);
-                        try {
-                          await cancelOrderByCustomer(selectedOrder.id);
-                          toast.success('Đã hủy đơn hàng');
-                          setSelectedOrder(null);
-                        } catch (e: unknown) {
-                          toast.error(e instanceof Error ? e.message : 'Không thể hủy đơn');
-                        } finally {
-                          setCancelling(false);
-                        }
-                      }}
+                      onClick={() => setShowCancelModal(true)}
                       className="px-4 py-2 rounded-lg border border-destructive text-destructive text-sm font-medium hover:bg-destructive/10 disabled:opacity-60"
                     >
                       {cancelling ? 'Đang xử lý…' : 'Hủy đơn hàng'}
@@ -612,6 +602,25 @@ export default function OrdersPage() {
                   <p className="text-sm text-muted-foreground rounded-lg border border-border p-3 bg-muted/20">
                     {selectedOrder.sourceOrder.notes?.trim() || 'Không có ghi chú'}
                   </p>
+                </div>
+              )}
+
+              {/* Hiển thị lý do hủy */}
+              {selectedOrder.sourceOrder.status === 'cancelled' && selectedOrder.sourceOrder.cancelReason && (
+                <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-2">
+                  <h3 className="font-bold text-destructive flex items-center gap-2">
+                    <XCircle className="h-4 w-4" />
+                    Lý do hủy đơn
+                  </h3>
+                  <p className="text-sm font-medium text-foreground">
+                    {CANCEL_REASONS_USER.find(r => r.value === selectedOrder.sourceOrder.cancelReason)?.label
+                      ?? selectedOrder.sourceOrder.cancelReason}
+                  </p>
+                  {selectedOrder.sourceOrder.cancelNote && (
+                    <p className="text-sm text-muted-foreground bg-background rounded-lg p-3 border border-border">
+                      &ldquo;{selectedOrder.sourceOrder.cancelNote}&rdquo;
+                    </p>
+                  )}
                 </div>
               )}
 
@@ -663,6 +672,28 @@ export default function OrdersPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Cancel Order Modal */}
+      {showCancelModal && selectedOrder && (
+        <CancelOrderModal
+          orderId={selectedOrder.id}
+          isAdmin={false}
+          onConfirm={async (reason, note) => {
+            setCancelling(true);
+            try {
+              await cancelOrderByCustomer(selectedOrder.id, reason, note);
+              toast.success('Đã hủy đơn hàng thành công');
+              setShowCancelModal(false);
+              setSelectedOrder(null);
+            } catch (e: unknown) {
+              throw e;
+            } finally {
+              setCancelling(false);
+            }
+          }}
+          onClose={() => setShowCancelModal(false)}
+        />
       )}
     </div>
   );

@@ -78,6 +78,8 @@ function mapOrder(dh: any) {
     createdAt: dh.ngayDat?.toISOString?.() ?? new Date().toISOString(),
     updatedAt: dh.ngayDat?.toISOString?.() ?? new Date().toISOString(),
     notes: null,
+    cancelReason: dh.lyDoHuy ?? null,
+    cancelNote: dh.ghiChuHuy ?? null,
     items: (dh.chiTiet ?? []).map((ct: any) => ({
       productId: ct.maSanPham,
       name: ct.sanPham?.tenSanPham ?? 'Sản phẩm',
@@ -280,7 +282,7 @@ app.get('/api/products/:id', async (req, res) => {
 
 app.post('/api/products', authRequired, requireRole('admin', 'staff'), async (req, res) => {
   try {
-    const { name, category, brand, price, stock, description } = req.body;
+    const { name, category, brand, price, stock, description, images } = req.body;
 
     // Find or create category
     let danhMuc = await prisma.danhMuc.findFirst({ where: { tenDanhMuc: category } });
@@ -296,6 +298,9 @@ app.post('/api/products', authRequired, requireRole('admin', 'staff'), async (re
         giaBan: Number(price),
         soLuongTon: Number(stock ?? 0),
         moTaKT: description ?? '',
+        hinhAnhs: images && images.length > 0 ? {
+          create: images.map((url: string) => ({ url }))
+        } : undefined,
       },
       include: { hinhAnhs: true, danhMuc: true },
     });
@@ -308,7 +313,7 @@ app.post('/api/products', authRequired, requireRole('admin', 'staff'), async (re
 
 app.patch('/api/products/:id', authRequired, requireRole('admin', 'staff'), async (req, res) => {
   try {
-    const { name, brand, price, stock, description, category } = req.body;
+    const { name, brand, price, stock, description, category, images } = req.body;
     const data: any = {};
     if (name !== undefined) data.tenSanPham = name;
     if (brand !== undefined) data.thuongHieu = brand;
@@ -319,6 +324,15 @@ app.patch('/api/products/:id', authRequired, requireRole('admin', 'staff'), asyn
       let danhMuc = await prisma.danhMuc.findFirst({ where: { tenDanhMuc: category } });
       if (!danhMuc) danhMuc = await prisma.danhMuc.create({ data: { tenDanhMuc: category } });
       data.maDanhMuc = danhMuc.maDanhMuc;
+    }
+
+    if (images && Array.isArray(images)) {
+      await prisma.hinhAnh.deleteMany({
+        where: { maSanPham: req.params.id }
+      });
+      data.hinhAnhs = {
+        create: images.map((url: string) => ({ url }))
+      };
     }
 
     const sp = await prisma.sanPham.update({
@@ -430,6 +444,7 @@ app.patch('/api/orders/:id/status', authRequired, requireRole('admin', 'staff'),
 
 app.post('/api/orders/:id/cancel', authRequired, async (req, res) => {
   const u = getUser(req);
+  const { reason, note } = req.body ?? {};
   try {
     const dh = await prisma.donHang.findUnique({
       where: { maDonHang: req.params.id },
@@ -453,6 +468,11 @@ app.post('/api/orders/:id/cancel', authRequired, async (req, res) => {
       }
     }
 
+    if (!reason) {
+      res.status(400).json({ error: 'Vui lòng chọn lý do hủy đơn hàng' });
+      return;
+    }
+
     const updated = await prisma.$transaction(async (tx) => {
       // Restore stock
       for (const ct of dh.chiTiet) {
@@ -463,7 +483,11 @@ app.post('/api/orders/:id/cancel', authRequired, async (req, res) => {
       }
       return tx.donHang.update({
         where: { maDonHang: req.params.id },
-        data: { trangThai: 'Da_Huy' },
+        data: {
+          trangThai: 'Da_Huy',
+          lyDoHuy: String(reason).trim(),
+          ghiChuHuy: note ? String(note).trim() : null,
+        },
         include: { chiTiet: { include: { sanPham: true } }, nguoiDung: true },
       });
     });

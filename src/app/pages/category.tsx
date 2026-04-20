@@ -258,7 +258,7 @@ export default function CategoryPage() {
                   name={product.name}
                   price={product.price}
                   originalPrice={product.oldPrice}
-                  image={product.images[0]}
+                  image={(.images ? .images[0] : (.image || ''))}
                   rating={product.rating}
                   reviews={product.sold}
                   inStock={product.stock > 0}

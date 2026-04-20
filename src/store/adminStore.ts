@@ -69,6 +69,10 @@ export interface Order {
   updatedAt: string;
   /** Ghi chú đơn hàng (khách) */
   notes?: string | null;
+  /** Lý do hủy đơn hàng */
+  cancelReason?: string | null;
+  /** Ghi chú thêm khi hủy */
+  cancelNote?: string | null;
   /** Thời điểm theo từng bước trạng thái (ISO) */
   confirmedAt?: string | null;
   shippedAt?: string | null;
@@ -314,7 +318,7 @@ interface AdminStore {
   deleteOrder: (id: string) => Promise<void>;
   setOrdersFromServer: (orders: Order[]) => void;
   bootstrapFromApi: () => Promise<void>;
-  cancelOrderByCustomer: (id: string) => Promise<void>;
+  cancelOrderByCustomer: (id: string, reason: string, note?: string) => Promise<void>;
   patchOrderCustomerInfo: (
     id: string,
     payload: Partial<{
@@ -661,7 +665,7 @@ export const useAdminStore = create<AdminStore>()(
         }
       },
 
-      cancelOrderByCustomer: async (id) => {
+      cancelOrderByCustomer: async (id, reason, note) => {
         const token = useAuthStore.getState().token;
         if (!token) throw new Error('Chưa đăng nhập');
 
@@ -669,7 +673,7 @@ export const useAdminStore = create<AdminStore>()(
         const localCancel = () => {
           set((state) => ({
             orders: state.orders.map((o) =>
-              o.id === id ? { ...o, status: 'cancelled' as OrderStatus, updatedAt: nowIso(), cancelledAt: nowIso() } : o
+              o.id === id ? { ...o, status: 'cancelled' as OrderStatus, cancelReason: reason, cancelNote: note ?? null, updatedAt: nowIso(), cancelledAt: nowIso() } : o
             ),
           }));
         };
@@ -677,7 +681,11 @@ export const useAdminStore = create<AdminStore>()(
         try {
           const res = await fetch(`/api/orders/${encodeURIComponent(id)}/cancel`, {
             method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ reason, note }),
           });
           const data = await res.json().catch(() => ({}));
           if (!res.ok) {
@@ -958,15 +966,19 @@ export const useAdminStore = create<AdminStore>()(
  */
 export function useEffectiveProducts() {
   const { products, storeConfig } = useAdminStore();
+  
+  // Failsafe: if the backend DB has no products or fetch hasn't completed, fallback to INITIAL_PRODUCTS
+  const currentProducts = products.length > 0 ? products : INITIAL_PRODUCTS;
+
   const flashSaleEndStr = localStorage.getItem('electro-flash-sale-end');
   const flashSaleEnd = flashSaleEndStr ? parseInt(flashSaleEndStr, 10) : 0;
   const isFsActive = !isNaN(flashSaleEnd) && flashSaleEnd > Date.now();
 
   if (!isFsActive || !storeConfig.flashSaleItems || storeConfig.flashSaleItems.length === 0) {
-    return products;
+    return currentProducts;
   }
 
-  return products.map(p => {
+  return currentProducts.map(p => {
     const manualConfig = storeConfig.flashSaleItems.find(item => item.productId === p.id);
     if (manualConfig && manualConfig.flashSalePrice < p.price) {
       return {

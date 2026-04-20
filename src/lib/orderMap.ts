@@ -26,6 +26,8 @@ export function mapPrismaOrderToStore(o: {
   createdAt: string;
   updatedAt: string;
   notes?: string | null;
+  cancelReason?: string | null;
+  cancelNote?: string | null;
   confirmedAt?: unknown;
   shippedAt?: unknown;
   deliveredAt?: unknown;
@@ -59,6 +61,8 @@ export function mapPrismaOrderToStore(o: {
     createdAt: o.createdAt,
     updatedAt: o.updatedAt,
     notes: o.notes ?? null,
+    cancelReason: o.cancelReason ?? null,
+    cancelNote: o.cancelNote ?? null,
     confirmedAt: iso(o.confirmedAt),
     shippedAt: iso(o.shippedAt),
     deliveredAt: iso(o.deliveredAt),
