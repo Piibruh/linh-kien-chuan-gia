@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Linh Kiện Chuẩn Giá — Linh kiện điện tử</title>
+    <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+    <!-- Font: không dùng @import trong CSS để tránh chặn parse Tailwind/theme -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Giao diện tối thiểu trước khi JS/React chạy (tránh màn hình trắng lâu) -->
+    <style>
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: #f9fafb;
+        color: #111827;
+      }
+      #root {
+        min-height: 100vh;
+      }
+      .app-boot-placeholder {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+        font-size: 0.95rem;
+        color: #6b7280;
+      }
+      .app-boot-spinner {
+        width: 2rem;
+        height: 2rem;
+        border: 3px solid #e5e7eb;
+        border-top-color: #2563eb;
+        border-radius: 50%;
+        animation: app-boot-spin 0.7s linear infinite;
+      }
+      @keyframes app-boot-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="root">
+      <div class="app-boot-placeholder" aria-live="polite" aria-busy="true">
+        <div class="app-boot-spinner" role="presentation"></div>
+        <span>Đang tải ứng dụng…</span>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
