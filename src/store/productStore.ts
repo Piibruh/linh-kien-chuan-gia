@@ -1,20 +1,19 @@
 import { create } from 'zustand';
 
 export interface Product {
-  id: string;
-  name: string;
+  maSanPham: string;
+  tenSanPham: string;
   slug: string;
-  category: string;
-  brand: string;
-  price: number;
+  maDanhMuc: string;
+  thuongHieu: string;
+  giaBan: number;
   oldPrice?: number;
-  stock: number;
+  soLuongTon: number;
   rating: number;
   sold?: number;
   reviews?: number;
-  specs?: Record<string, string>;
-  specifications?: Record<string, string>; // Support both field names
-  description?: string;
+  moTaKT?: string;
+  moTa?: string;
   images: string[];
   publishDate?: string;
   editCount?: number;
@@ -48,58 +47,63 @@ const getProductsFromAdminStore = (): Product[] => {
       const flashSaleEnd = flashSaleEndStr ? parseInt(flashSaleEndStr, 10) : 0;
       const isFlashSaleActive = !isNaN(flashSaleEnd) && flashSaleEnd > Date.now();
 
-      if (isFlashSaleActive && storeConfig?.flashSaleItems?.length > 0) {
-        return products.map(product => {
-          const fsItem = storeConfig.flashSaleItems.find((item: any) => item.productId === product.id);
-          if (fsItem && fsItem.flashSalePrice < product.price) {
-            // Apply custom flash sale price, overriding old price
-            return {
-              ...product,
-              oldPrice: product.price,
-              price: fsItem.flashSalePrice,
-            };
-          }
-          return product;
-        });
-      }
+      return products.map((p) => {
+        let finalPrice = p.giaBan;
+        let oldPrice = p.oldPrice;
 
-      return products;
+        // Apply dynamic Flash Sale price if configured
+        if (isFlashSaleActive && storeConfig?.flashSaleItems) {
+          const fsItem = storeConfig.flashSaleItems.find((i: any) => i.maSanPham === p.maSanPham);
+          if (fsItem) {
+            oldPrice = p.giaBan;
+            finalPrice = fsItem.flashSalePrice;
+          }
+        }
+
+        return {
+          ...p,
+          giaBan: finalPrice,
+          oldPrice: oldPrice,
+        };
+      });
     }
-  } catch (error) {
-    console.error('Error loading products from adminStore:', error);
+  } catch (e) {
+    console.error('Error reading products from adminStore:', e);
   }
   return [];
 };
 
 interface ProductStore {
-  getProducts: () => Product[];
-  getById: (id: string) => Product | undefined;
-  getByCategory: (category: string) => Product[];
-  search: (query: string) => Product[];
+  products: Product[];
+  searchQuery: string;
+  selectedCategory: string;
+  setSearchQuery: (query: string) => void;
+  setSelectedCategory: (category: string) => void;
+  getFilteredProducts: () => Product[];
+  refreshProducts: () => void;
 }
 
-export const useProductStore = create<ProductStore>()(() => ({
-  getProducts: () => getProductsFromAdminStore(),
+export const useProductStore = create<ProductStore>((set, get) => ({
+  products: getProductsFromAdminStore(),
+  searchQuery: '',
+  selectedCategory: 'all',
 
-  getById: (id) => getProductsFromAdminStore().find((p) => p.id === id),
+  setSearchQuery: (query) => set({ searchQuery: query }),
+  setSelectedCategory: (category) => set({ selectedCategory: category }),
 
-  getByCategory: (category) => {
-    const products = getProductsFromAdminStore();
-    return category ? products.filter((p) => p.category === category) : products;
+  refreshProducts: () => {
+    set({ products: getProductsFromAdminStore() });
   },
 
-  search: (query) => {
-    const products = getProductsFromAdminStore();
-    const q = query.toLowerCase().trim();
-    if (!q) return products;
-    return products.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q) ||
-        p.brand.toLowerCase().includes(q)
-    );
+  getFilteredProducts: () => {
+    const { products, searchQuery, selectedCategory } = get();
+    return products.filter((p) => {
+      const matchesSearch =
+        p.tenSanPham.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.thuongHieu.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory =
+        selectedCategory === 'all' || p.maDanhMuc === selectedCategory || p.slug === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
   },
 }));
-
-// For backward compatibility
-export const ALL_PRODUCTS = getProductsFromAdminStore();

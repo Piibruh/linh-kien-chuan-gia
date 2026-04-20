@@ -358,11 +358,11 @@ export default function AdminDashboard() {
   };
 
   // ── Product handlers ───────────────────────────────────────────────────────
-  const handleDeleteProduct = async (productId: string, productName: string) => {
+  const handleDeleteProduct = async (maSanPham: string, productName: string) => {
     if (!confirm(`Bạn có chắc muốn xóa sản phẩm "${productName}"?`)) return;
-    const key = `delete-product-${productId}`;
+    const key = `delete-product-${maSanPham}`;
     setLoadingStates((prev) => ({ ...prev, [key]: true }));
-    try { await deleteProduct(productId); toast.success(`Đã xóa sản phẩm "${productName}"`); }
+    try { await deleteProduct(maSanPham); toast.success(`Đã xóa sản phẩm "${productName}"`); }
     catch { toast.error('Không thể xóa sản phẩm'); }
     finally { setLoadingStates((prev) => ({ ...prev, [key]: false })); }
   };
@@ -890,25 +890,25 @@ export default function AdminDashboard() {
                         <tr><td colSpan={7} className="px-6 py-8 text-center text-muted-foreground">Không tìm thấy đơn hàng phù hợp</td></tr>
                       ) : (
                         filteredOrders.map((order) => (
-                          <tr key={order.id} className="hover:bg-muted/30 transition-colors">
-                            <td className="px-6 py-4"><span className="font-mono text-sm font-medium text-primary">{order.id}</span></td>
+                          <tr key={order.maDonHang} className="hover:bg-muted/30 transition-colors">
+                            <td className="px-6 py-4"><span className="font-mono text-sm font-medium text-primary">{order.maDonHang}</span></td>
                             <td className="px-6 py-4">
                               <div>
-                                <div className="text-sm font-medium text-foreground">{order.customerName}</div>
-                                <div className="text-xs text-muted-foreground">{order.customerEmail}</div>
+                                <div className="text-sm font-medium text-foreground">{order.tenNguoiNhan}</div>
+                                <div className="text-xs text-muted-foreground">{order.emailNguoiNhan}</div>
                               </div>
                             </td>
                             <td className="px-6 py-4">
                               <span className="text-sm text-muted-foreground line-clamp-1">
-                                {order.products.map((p) => `${p.name} (x${p.quantity})`).join(', ')}
+                                {order.chiTiet.map((p) => `${p.tenSanPham} (x${p.soLuong})`).join(', ')}
                               </span>
                             </td>
-                            <td className="px-6 py-4"><span className="text-sm font-medium text-foreground">{order.totalAmount.toLocaleString('vi-VN')}₫</span></td>
+                            <td className="px-6 py-4"><span className="text-sm font-medium text-foreground">{order.tongTien.toLocaleString('vi-VN')}₫</span></td>
                             <td className="px-6 py-4">
-                              <select value={order.status}
-                                onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as OrderStatus)}
-                                disabled={loadingStates[`order-${order.id}`]}
-                                className={`text-xs font-medium px-2 py-1 rounded-full border cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${statusColors[order.status]}`}>
+                              <select value={order.trangThai}
+                                onChange={(e) => handleUpdateOrderStatus(order.maDonHang, e.target.value as OrderStatus)}
+                                disabled={loadingStates[`order-${order.maDonHang}`]}
+                                className={`text-xs font-medium px-2 py-1 rounded-full border cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${statusColors[order.trangThai]}`}>
                                 <option value="pending">Chờ xác nhận</option>
                                 <option value="processing">Đang xử lý</option>
                                 <option value="shipping">Đang giao</option>
@@ -917,7 +917,7 @@ export default function AdminDashboard() {
                                 <option value="cancelled">Đã hủy</option>
                               </select>
                             </td>
-                            <td className="px-6 py-4"><span className="text-sm text-muted-foreground">{new Date(order.createdAt).toLocaleDateString('vi-VN')}</span></td>
+                            <td className="px-6 py-4"><span className="text-sm text-muted-foreground">{new Date(order.ngayDat).toLocaleDateString('vi-VN')}</span></td>
                             <td className="px-6 py-4">
                               <div className="flex items-center justify-center gap-1">
                                 <button onClick={() => handleViewOrder(order)} className="p-2 hover:bg-muted rounded-lg transition-colors" title="Xem">
@@ -1166,17 +1166,17 @@ export default function AdminDashboard() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                   {products.slice(0, 16).map((product) => (
-                    <div key={product.id} className="border border-border rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div key={product.maSanPham} className="border border-border rounded-lg p-4 hover:shadow-md transition-shadow">
                       <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden">
-                        <img src={product.images?.length ? product.images[0] : (product.image || 'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?w=100')} alt={product.name} className="w-full h-full object-contain bg-[#f5f5f5]" />
+                        <img src={product.images?.length ? product.images[0] : (product.image || 'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?w=100')} alt={product.tenSanPham} className="w-full h-full object-contain bg-[#f5f5f5]" />
                       </div>
-                      <h3 className="font-medium text-foreground mb-1 line-clamp-2 min-h-[2.5rem]">{product.name}</h3>
-                      <p className="text-sm text-muted-foreground mb-2">{product.category}</p>
+                      <h3 className="font-medium text-foreground mb-1 line-clamp-2 min-h-[2.5rem]">{product.tenSanPham}</h3>
+                      <p className="text-sm text-muted-foreground mb-2">{product.maDanhMuc}</p>
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-primary">{product.price.toLocaleString('vi-VN')}₫</span>
+                        <span className="font-bold text-primary">{product.giaBan.toLocaleString('vi-VN')}₫</span>
                         <div className="flex gap-1">
                           {can('manage_products') && (
-                            <button onClick={() => navigate(`/admin/products/edit?id=${product.id}`)} className="p-1.5 hover:bg-muted rounded transition-colors" title="Sửa">
+                            <button onClick={() => navigate(`/admin/products/edit?maSanPham=${product.maSanPham}`)} className="p-1.5 hover:bg-muted rounded transition-colors" title="Sửa">
                               <Edit className="h-4 w-4 text-muted-foreground" />
                             </button>
                           )}
@@ -1419,7 +1419,7 @@ export default function AdminDashboard() {
                         ) : (
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                             {configForm.flashSaleItems.map((item, idx) => {
-                              const p = products.find(prod => prod.id === item.productId);
+                              const p = products.find(prod => prod.id === item.maSanPham);
                               if (!p) return null;
                               const savePct = Math.round(((p.price - item.flashSalePrice) / p.price) * 100);
                               return (
@@ -1450,14 +1450,14 @@ export default function AdminDashboard() {
 
                       {/* ─── Product Picker Modal ─── */}
                       {showFsPicker && (() => {
-                        const CATS = ['all', ...Array.from(new Set(products.map(p => p.category)))];
+                        const CATS = ['all', ...Array.from(new Set(products.map(p => p.maDanhMuc)))];
                         const filtered = products.filter(p => {
-                          const matchCat = fsPickerCategory === 'all' || p.category === fsPickerCategory;
+                          const matchCat = fsPickerCategory === 'all' || p.maDanhMuc === fsPickerCategory;
                           const q = fsPickerSearch.toLowerCase().trim();
-                          const matchQ = !q || p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q);
+                          const matchQ = !q || p.tenSanPham.toLowerCase().includes(q) || p.thuongHieu.toLowerCase().includes(q);
                           return matchCat && matchQ;
                         });
-                        const alreadyAdded = new Set(configForm.flashSaleItems.map(i => i.productId));
+                        const alreadyAdded = new Set(configForm.flashSaleItems.map(i => i.maSanPham));
                         return (
                           <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setShowFsPicker(false); }}>
                             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
@@ -1549,7 +1549,7 @@ export default function AdminDashboard() {
                                                   const pNum = parseInt(fsPriceMap[p.id] || '', 10);
                                                   if (!fsPriceMap[p.id] || isNaN(pNum)) return toast.error('Nhập giá Flash Sale trước!');
                                                   if (pNum >= p.price) return toast.error('Giá Flash Sale phải nhỏ hơn giá gốc!');
-                                                  setConfigForm({ ...configForm, flashSaleItems: [...configForm.flashSaleItems, { productId: p.id, flashSalePrice: pNum }] });
+                                                  setConfigForm({ ...configForm, flashSaleItems: [...configForm.flashSaleItems, { maSanPham: p.id, flashSalePrice: pNum }] });
                                                   const m = { ...fsPriceMap }; delete m[p.id]; setFsPriceMap(m);
                                                 }} className="flex-shrink-0 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-2.5 py-1.5 rounded-lg transition-colors">
                                                   Thêm
@@ -1558,10 +1558,10 @@ export default function AdminDashboard() {
                                             ) : (
                                               <div className="flex items-center justify-between">
                                                 <span className="text-xs font-semibold text-orange-600 dark:text-orange-400">
-                                                  ⚡ {configForm.flashSaleItems.find(i => i.productId === p.id)?.flashSalePrice.toLocaleString('vi-VN')}₫
+                                                  ⚡ {configForm.flashSaleItems.find(i => i.maSanPham === p.id)?.flashSalePrice.toLocaleString('vi-VN')}₫
                                                 </span>
                                                 <button type="button" onClick={() => {
-                                                  setConfigForm({ ...configForm, flashSaleItems: configForm.flashSaleItems.filter(i => i.productId !== p.id) });
+                                                  setConfigForm({ ...configForm, flashSaleItems: configForm.flashSaleItems.filter(i => i.maSanPham !== p.id) });
                                                 }} className="text-[10px] text-destructive hover:underline">Gỡ bỏ</button>
                                               </div>
                                             )}
@@ -1617,7 +1617,7 @@ export default function AdminDashboard() {
                     <div className="space-y-3">
                       {(() => {
                         const threshold = configForm.flashSaleThreshold;
-                        const manualIds = new Set(configForm.flashSaleItems.map(i => i.productId));
+                        const manualIds = new Set(configForm.flashSaleItems.map(i => i.maSanPham));
                         const activeItems = products.filter(p => {
                           if (manualIds.has(p.id)) return true;
                           if (p.oldPrice && p.oldPrice > p.price) {
@@ -1634,7 +1634,7 @@ export default function AdminDashboard() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {activeItems.map(p => {
                               const isManual = manualIds.has(p.id);
-                              const mItem = configForm.flashSaleItems.find(i => i.productId === p.id);
+                              const mItem = configForm.flashSaleItems.find(i => i.maSanPham === p.id);
                               const displayPrice = isManual ? mItem!.flashSalePrice : p.price;
                               const oldP = isManual ? p.price : (p.oldPrice || p.price);
                               const pct = Math.round(((oldP - displayPrice) / oldP) * 100);

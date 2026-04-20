@@ -238,7 +238,8 @@ export default function LoginPage() {
         navigate(next, { replace: true });
         return;
       }
-      if (user.role === 'admin' || user.role === 'staff') {
+      const isStaff = user.role === 'admin' || user.role === 'product_staff' || user.role === 'order_staff' || user.role === 'user_manager';
+      if (isStaff) {
         navigate('/admin', { replace: true });
       } else {
         navigate('/', { replace: true });
@@ -288,7 +289,8 @@ export default function LoginPage() {
         return;
       }
 
-      if (user?.role === 'admin' || user?.role === 'staff') {
+      const isStaff = user?.role === 'admin' || user?.role === 'product_staff' || user?.role === 'order_staff' || user?.role === 'user_manager';
+      if (isStaff) {
         navigate('/admin');
       } else {
         navigate('/');
@@ -334,13 +336,15 @@ export default function LoginPage() {
             {/* Test Accounts (Quick Login) */}
             <div className="mb-6">
               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 text-center">
-                Tài khoản dùng thử
+                Đăng nhập nhanh (Dành cho Demo)
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: 'Admin', email: 'admin@test.com', pw: 'password123', cls: 'bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20' },
-                  { label: 'Staff', email: 'staff@test.com', pw: 'staff123', cls: 'bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20' },
-                  { label: 'User', email: 'user@test.com', pw: 'user123', cls: 'bg-muted text-muted-foreground border border-border hover:bg-muted/60' },
+                  { label: 'Quản trị (Admin)', email: 'admin@test.com', pw: 'password123', cls: 'bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20' },
+                  { label: 'NV Sản phẩm', email: 'product@test.com', pw: 'product123', cls: 'bg-orange-500/10 text-orange-600 border border-orange-500/20 hover:bg-orange-500/20' },
+                  { label: 'NV Đơn hàng', email: 'order@test.com', pw: 'order123', cls: 'bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500/20' },
+                  { label: 'NV Người dùng', email: 'user_manager@test.com', pw: 'user123', cls: 'bg-purple-500/10 text-purple-600 border border-purple-500/20 hover:bg-purple-500/20' },
+                  { label: 'Khách hàng', email: 'user@test.com', pw: 'user123', cls: 'bg-muted text-muted-foreground border border-border hover:bg-muted/60 col-span-2' },
                 ].map((acc) => (
                   <button
                     key={acc.email}
@@ -349,7 +353,7 @@ export default function LoginPage() {
                       setFormData({ email: acc.email, password: acc.pw });
                       setErrors((prev) => ({ ...prev, email: '', password: '', general: '' }));
                     }}
-                    className={`py-2 rounded-lg text-xs font-bold transition-all active:scale-95 ${acc.cls}`}
+                    className={`py-2 px-1 rounded-lg text-[10px] font-bold transition-all active:scale-95 ${acc.cls}`}
                   >
                     {acc.label}
                   </button>

@@ -7,6 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// 1. Bảng Tài Khoản
 model TaiKhoan {
   maTaiKhoan  String   @id @default(uuid())
   tenDangNhap String   @unique
@@ -18,6 +19,7 @@ model TaiKhoan {
   nguoiDung NguoiDung?
 }
 
+// 2. Bảng Người Dùng
 model NguoiDung {
   maNguoiDung String   @id @default(uuid())
   maTaiKhoan  String   @unique
@@ -31,6 +33,7 @@ model NguoiDung {
   donHangs DonHang[]
 }
 
+// 3. Bảng Danh mục
 model DanhMuc {
   maDanhMuc  String  @id @default(uuid())
   tenDanhMuc String
@@ -39,6 +42,7 @@ model DanhMuc {
   sanPhams SanPham[]
 }
 
+// 4. Bảng Sản phẩm
 model SanPham {
   maSanPham  String  @id @default(uuid())
   maDanhMuc  String
@@ -55,6 +59,7 @@ model SanPham {
   ctDonHangs ChiTietDonHang[]
 }
 
+// 5. Bảng Hình ảnh
 model HinhAnh {
   maHinh    String  @id @default(uuid())
   maSanPham String
@@ -62,6 +67,7 @@ model HinhAnh {
   url       String
 }
 
+// 6. Bảng Giỏ hàng
 model GioHang {
   maGioHang   String    @id @default(uuid())
   maNguoiDung String
@@ -70,6 +76,7 @@ model GioHang {
   chiTiet ChiTietGioHang[]
 }
 
+// 7. Bảng Chi tiết giỏ hàng
 model ChiTietGioHang {
   maCTGH    String  @id @default(uuid())
   maGioHang String
@@ -79,6 +86,7 @@ model ChiTietGioHang {
   soLuong   Int
 }
 
+// 8. Bảng Đơn hàng
 model DonHang {
   maDonHang    String    @id @default(uuid())
   maNguoiDung  String
@@ -91,8 +99,8 @@ model DonHang {
   trangThai    String    @default("Cho_Xu_Ly")
   diaChiGiao   String
   ghiChu       String?
-  lyDoHuy      String?   // Lý do hủy đơn hàng
-  ghiChuHuy   String?   // Ghi chú thêm khi hủy
+  lyDoHuy      String?   
+  ghiChuHuy    String?   
 
   confirmedAt  DateTime?
   shippedAt    DateTime?
@@ -106,6 +114,7 @@ model DonHang {
   vanChuyen VanChuyen[]
 }
 
+// 9. Bảng Chi tiết đơn hàng
 model ChiTietDonHang {
   maChiTiet String  @id @default(uuid())
   maDonHang String
@@ -116,15 +125,17 @@ model ChiTietDonHang {
   donGia    Float
 }
 
+// 10. Bảng Thanh toán
 model ThanhToan {
   maThanhToan String    @id @default(uuid())
   maDonHang   String
   donHang     DonHang   @relation(fields: [maDonHang], references: [maDonHang], onDelete: Cascade)
   phuongThuc  String
   trangThai   String
-  ngayTT      DateTime?
+  ngayTT      DateTime? @default(now())
 }
 
+// 11. Bảng Vận chuyển
 model VanChuyen {
   maVanChuyen  String  @id @default(uuid())
   maDonHang    String

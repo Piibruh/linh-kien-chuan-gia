@@ -47,26 +47,26 @@ const safeJsonFetch = async (url: string, options: RequestInit = {}) => {
 export type { OrderPaymentMethod, OrderPaymentStatus, OrderStatus } from '../lib/orderFlow';
 
 export interface Order {
-  id: string;
-  customerId: string;
-  customerName: string;
-  customerEmail: string;
-  products: Array<{
-    id: string;
-    name: string;
-    quantity: number;
-    price: number;
+  maDonHang: string;
+  maNguoiDung: string;
+  tenNguoiNhan: string;
+  emailNguoiNhan: string;
+  chiTiet: Array<{
+    maSanPham: string;
+    tenSanPham: string;
+    soLuong: number;
+    donGia: number;
   }>;
-  totalAmount: number;
-  status: OrderStatus;
-  shippingAddress: string;
+  tongTien: number;
+  trangThai: OrderStatus;
+  diaChiGiao: string;
   /** Chi tiết địa chỉ (đồng bộ API) */
   addressLine?: string;
   city?: string;
   district?: string;
   ward?: string;
-  phoneNumber: string;
-  createdAt: string;
+  sdtNhan: string;
+  ngayDat: string;
   updatedAt: string;
   paymentMethod?: OrderPaymentMethod;
   paymentStatus?: OrderPaymentStatus;
@@ -93,24 +93,22 @@ export type StoredUser = User & {
 export interface StoreConfig {
   flashSaleThreshold: number;
   flashSaleDurationHours: number;
-  flashSaleItems: Array<{ productId: string; flashSalePrice: number }>;
+  flashSaleItems: Array<{ maSanPham: string; flashSalePrice: number }>;
 }
 
 export interface CreateOrderPayload {
-  customerId: string;
-  customerName: string;
-  customerEmail: string;
-  phoneNumber: string;
-  shippingAddress: string;
-  products: Array<{
-    id: string;
-    name: string;
-    quantity: number;
-    price: number;
+  maNguoiDung: string;
+  tenNguoiNhan: string;
+  emailNguoiNhan: string;
+  sdtNhan: string;
+  diaChiGiao: string;
+  chiTiet: Array<{
+    maSanPham: string;
+    tenSanPham: string;
+    soLuong: number;
+    donGia: number;
   }>;
-  totalAmount?: number;
-  /** Structured address for API */
-  addressLine?: string;
+  tongTien?: number;
   city?: string;
   district?: string;
   ward?: string;
@@ -275,7 +273,7 @@ const INITIAL_USERS: StoredUser[] = [
     id: 'u_p1',
     name: 'Quản lý Sản phẩm',
     email: 'product@test.com',
-    password: 'password123',
+    password: 'product123',
     role: 'product_staff',
     phone: '0911222333',
     address: 'Hà Nội',
@@ -285,11 +283,21 @@ const INITIAL_USERS: StoredUser[] = [
     id: 'u_o1',
     name: 'Quản lý Đơn hàng',
     email: 'order@test.com',
-    password: 'password123',
+    password: 'order123',
     role: 'order_staff',
     phone: '0944555666',
     address: 'TP.HCM',
     createdAt: '2026-04-20T11:00:00Z',
+  },
+  {
+    id: 'u_u1',
+    name: 'NV Quản lý Người dùng',
+    email: 'user_manager@test.com',
+    password: 'user123',
+    role: 'user_manager',
+    phone: '0955666777',
+    address: 'Hà Nội',
+    createdAt: '2026-04-20T12:00:00Z',
   },
   {
     id: 'u3',
@@ -352,7 +360,7 @@ const applyLocalStatusUpdate = (order: Order, nextStatus: OrderStatus): Order =>
   const paymentMethod = order.paymentMethod ?? 'cod';
   const paymentStatus = order.paymentStatus ?? getDefaultPaymentStatus(paymentMethod);
 
-  if (nextStatus === 'processing' && order.status === 'pending') {
+  if (nextStatus === 'processing' && order.trangThai === 'pending') {
     return normalizeOrder({
       ...order,
       status: 'processing',
@@ -361,7 +369,7 @@ const applyLocalStatusUpdate = (order: Order, nextStatus: OrderStatus): Order =>
     });
   }
 
-  if (nextStatus === 'shipping' && order.status === 'processing') {
+  if (nextStatus === 'shipping' && order.trangThai === 'processing') {
     return normalizeOrder({
       ...order,
       status: 'shipping',
@@ -371,7 +379,7 @@ const applyLocalStatusUpdate = (order: Order, nextStatus: OrderStatus): Order =>
     });
   }
 
-  if (nextStatus === 'delivered' && order.status === 'shipping') {
+  if (nextStatus === 'delivered' && order.trangThai === 'shipping') {
     return normalizeOrder({
       ...order,
       status: 'delivered',
@@ -381,7 +389,7 @@ const applyLocalStatusUpdate = (order: Order, nextStatus: OrderStatus): Order =>
     });
   }
 
-  if (nextStatus === 'completed' && order.status === 'delivered' && paymentStatus === 'paid') {
+  if (nextStatus === 'completed' && order.trangThai === 'delivered' && paymentStatus === 'paid') {
     return normalizeOrder({
       ...order,
       status: 'completed',
@@ -391,7 +399,7 @@ const applyLocalStatusUpdate = (order: Order, nextStatus: OrderStatus): Order =>
     });
   }
 
-  if (nextStatus === 'cancelled' && ['pending', 'processing', 'shipping'].includes(order.status)) {
+  if (nextStatus === 'cancelled' && ['pending', 'processing', 'shipping'].includes(order.trangThai)) {
     return normalizeOrder({
       ...order,
       status: 'cancelled',
@@ -517,14 +525,14 @@ export const useAdminStore = create<AdminStore>()(
           }
           const product = normalizeProduct(data.product);
           set((state) => ({
-            products: state.products.map((p) => (p.id === id ? product : p)),
+            products: state.products.map((p) => (p.maSanPham === id ? product : p)),
           }));
           return;
         }
 
         await delay();
         set((state) => ({
-          products: state.products.map((p) => (p.id === id ? { ...p, ...updates } : p)),
+          products: state.products.map((p) => (p.maSanPham === id ? { ...p, ...updates } : p)),
         }));
       },
 
@@ -538,14 +546,14 @@ export const useAdminStore = create<AdminStore>()(
             throw new Error('Không thể xóa sản phẩm');
           }
           set((state) => ({
-            products: state.products.filter((p) => p.id !== id),
+            products: state.products.filter((p) => p.maSanPham !== id),
           }));
           return;
         }
 
         await delay();
         set((state) => ({
-          products: state.products.filter((p) => p.id !== id),
+          products: state.products.filter((p) => p.maSanPham !== id),
         }));
       },
 
@@ -555,23 +563,23 @@ export const useAdminStore = create<AdminStore>()(
 
       // Order operations
       createOrder: async (payload) => {
-        const trimmedName = payload.customerName.trim();
-        const trimmedEmail = payload.customerEmail.trim();
-        const trimmedPhone = payload.phoneNumber.trim();
-        const trimmedAddress = (payload.addressLine ?? payload.shippingAddress).trim();
+        const trimmedName = payload.tenNguoiNhan.trim();
+        const trimmedEmail = payload.emailNguoiNhan.trim();
+        const trimmedPhone = payload.sdtNhan.trim();
+        const trimmedAddress = (payload.addressLine ?? payload.diaChiGiao).trim();
 
-        if (!payload.customerId || !trimmedName || !trimmedEmail || !trimmedPhone || !trimmedAddress) {
+        if (!payload.maNguoiDung || !trimmedName || !trimmedEmail || !trimmedPhone || !trimmedAddress) {
           throw new Error('Thiếu thông tin khách hàng hoặc địa chỉ giao hàng');
         }
-        if (!Array.isArray(payload.products) || payload.products.length === 0) {
+        if (!Array.isArray(payload.chiTiet) || payload.chiTiet.length === 0) {
           throw new Error('Giỏ hàng trống');
         }
 
-        const productsById = new Map(get().products.map((p) => [p.id, p] as const));
+        const productsById = new Map(get().products.map((p) => [p.maSanPham, p] as const));
         const token = useAuthStore.getState().token;
 
-        const computedTotal = payload.products.reduce((sum, p) => sum + p.price * p.quantity, 0);
-        const totalAmount = payload.totalAmount ?? computedTotal;
+        const computedTotal = payload.chiTiet.reduce((sum, p) => sum + p.donGia * p.soLuong, 0);
+        const totalAmount = payload.tongTien ?? computedTotal;
 
         // ── Offline / demo mode fallback (no Express backend) ─────────────────
         const createLocalOrder = (): Order => {
@@ -586,26 +594,22 @@ export const useAdminStore = create<AdminStore>()(
             .filter(Boolean)
             .join(', ');
           const newOrder: Order = {
-            id: orderId,
-            customerId: payload.customerId,
-            customerName: trimmedName,
-            customerEmail: trimmedEmail,
-            phoneNumber: trimmedPhone,
-            shippingAddress: fullAddress || trimmedAddress,
-            addressLine: trimmedAddress,
-            city: (payload.city ?? '').trim(),
-            district: (payload.district ?? '').trim(),
-            ward: (payload.ward ?? '').trim(),
+            maDonHang: orderId,
+            maNguoiDung: payload.maNguoiDung,
+            tenNguoiNhan: trimmedName,
+            emailNguoiNhan: trimmedEmail,
+            sdtNhan: trimmedPhone,
+            diaChiGiao: fullAddress || trimmedAddress,
             notes: payload.notes?.trim() || null,
-            products: payload.products.map((line) => ({
-              id: line.id,
-              name: line.name,
-              quantity: line.quantity,
-              price: line.price,
+            chiTiet: payload.chiTiet.map((line) => ({
+              maSanPham: line.maSanPham,
+              tenSanPham: line.tenSanPham,
+              soLuong: line.soLuong,
+              donGia: line.donGia,
             })),
-            totalAmount: Math.round(totalAmount),
-            status: 'pending',
-            createdAt: now,
+            tongTien: Math.round(totalAmount),
+            trangThai: 'pending',
+            ngayDat: now,
             updatedAt: now,
             paymentMethod: payload.paymentMethod ?? 'cod',
             paymentStatus: getDefaultPaymentStatus(payload.paymentMethod ?? 'cod'),
@@ -633,16 +637,16 @@ export const useAdminStore = create<AdminStore>()(
             discount: Math.round(payload.discount ?? 0),
             shippingFee: Math.round(payload.shippingFee ?? 0),
             total: Math.round(totalAmount),
-            customerId: payload.customerId,
-            items: payload.products.map((line) => {
-              const p = productsById.get(line.id);
+            customerId: payload.maNguoiDung,
+            items: payload.chiTiet.map((line) => {
+              const p = productsById.get(line.maSanPham);
               return {
-                productId: line.id,
-                slug: p?.slug ?? line.id,
-                name: line.name,
+                productId: line.maSanPham,
+                slug: p?.slug ?? line.maSanPham,
+                name: line.tenSanPham,
                 image: p?.images?.[0] ?? '',
-                price: line.price,
-                quantity: line.quantity,
+                price: line.donGia,
+                quantity: line.soLuong,
               };
             }),
           };
@@ -726,7 +730,7 @@ export const useAdminStore = create<AdminStore>()(
               })
             );
             set((state) => ({
-              orders: state.orders.map((o) => (o.id === id ? mapped : o)),
+              orders: state.orders.map((o) => (o.maDonHang === id ? mapped : o)),
             }));
             return;
           } catch (err: any) {
@@ -739,7 +743,7 @@ export const useAdminStore = create<AdminStore>()(
         let updatedOrder: Order | null = null;
         set((state) => ({
           orders: state.orders.map((o) => {
-            if (o.id !== id) return o;
+            if (o.maDonHang !== id) return o;
             updatedOrder = applyLocalStatusUpdate(normalizeOrder(o), status);
             return updatedOrder;
           }),
@@ -780,7 +784,7 @@ export const useAdminStore = create<AdminStore>()(
               })
             );
             set((state) => ({
-              orders: state.orders.map((o) => (o.id === id ? mapped : o)),
+              orders: state.orders.map((o) => (o.maDonHang === id ? mapped : o)),
             }));
             return;
           } catch (err: any) {
@@ -794,7 +798,7 @@ export const useAdminStore = create<AdminStore>()(
         let updatedOrder: Order | null = null;
         set((state) => ({
           orders: state.orders.map((o) => {
-            if (o.id !== id) return o;
+            if (o.maDonHang !== id) return o;
             updatedOrder = applyLocalPaymentCollection(normalizeOrder(o));
             return updatedOrder;
           }),
@@ -829,9 +833,9 @@ export const useAdminStore = create<AdminStore>()(
                     mapPrismaOrderToStore({
                       ...o,
                       createdAt:
-                        typeof o.createdAt === 'string'
-                          ? o.createdAt
-                          : new Date(o.createdAt).toISOString(),
+                        typeof o.ngayDat === 'string'
+                          ? o.ngayDat
+                          : new Date(o.ngayDat).toISOString(),
                       updatedAt:
                         typeof o.updatedAt === 'string'
                           ? o.updatedAt
@@ -860,7 +864,7 @@ export const useAdminStore = create<AdminStore>()(
           const now = nowIso();
           set((state) => ({
             orders: state.orders.map((o) =>
-              o.id === id
+              o.maDonHang === id
                 ? normalizeOrder({
                     ...o,
                     status: 'cancelled' as OrderStatus,
@@ -903,7 +907,7 @@ export const useAdminStore = create<AdminStore>()(
             })
           );
           set((state) => ({
-            orders: state.orders.map((o) => (o.id === id ? mapped : o)),
+            orders: state.orders.map((o) => (o.maDonHang === id ? mapped : o)),
           }));
           try {
             const pr = await fetch('/api/products');
@@ -932,11 +936,11 @@ export const useAdminStore = create<AdminStore>()(
         const localPatch = () => {
           set((state) => ({
             orders: state.orders.map((o) =>
-              o.id === id
+              o.maDonHang === id
                 ? normalizeOrder({
                     ...o,
-                    customerName: payload.fullName ?? o.customerName,
-                    phoneNumber: payload.phone ?? o.phoneNumber,
+                    customerName: payload.fullName ?? o.tenNguoiNhan,
+                    phoneNumber: payload.phone ?? o.sdtNhan,
                     addressLine: payload.address ?? o.addressLine,
                     city: payload.city ?? o.city,
                     district: payload.district ?? o.district,
@@ -986,7 +990,7 @@ export const useAdminStore = create<AdminStore>()(
             })
           );
           set((state) => ({
-            orders: state.orders.map((o) => (o.id === id ? mapped : o)),
+            orders: state.orders.map((o) => (o.maDonHang === id ? mapped : o)),
           }));
         } catch (err: any) {
           // Network error → local patch
@@ -1008,14 +1012,14 @@ export const useAdminStore = create<AdminStore>()(
             throw new Error('Không thể xóa đơn hàng');
           }
           set((state) => ({
-            orders: state.orders.filter((o) => o.id !== id),
+            orders: state.orders.filter((o) => o.maDonHang !== id),
           }));
           return;
         }
 
         await delay();
         set((state) => ({
-          orders: state.orders.filter((o) => o.id !== id),
+          orders: state.orders.filter((o) => o.maDonHang !== id),
         }));
       },
 
@@ -1206,20 +1210,20 @@ export function useEffectiveProducts() {
 
   return currentProducts.map(p => {
     // Priority 1: Manual Admin Setting
-    if (manualPrices.has(p.id)) {
-      const fsPrice = manualPrices.get(p.id)!;
-      if (fsPrice < p.price) {
+    if (manualPrices.has(p.maSanPham)) {
+      const fsPrice = manualPrices.get(p.maSanPham)!;
+      if (fsPrice < p.giaBan) {
         return {
           ...p,
-          oldPrice: p.price,
+          oldPrice: p.giaBan,
           price: fsPrice
         };
       }
     }
 
     // Priority 2: Auto-threshold (if product already has a significant discount)
-    if (p.oldPrice && p.oldPrice > p.price) {
-      const pct = (p.oldPrice - p.price) / p.oldPrice;
+    if (p.oldPrice && p.oldPrice > p.giaBan) {
+      const pct = (p.oldPrice - p.giaBan) / p.oldPrice;
       if (pct >= threshold) {
         return p; 
       }
