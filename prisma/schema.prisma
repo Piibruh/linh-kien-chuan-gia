@@ -86,11 +86,20 @@ model DonHang {
   tenNguoiNhan String
   sdtNhan      String
   ngayDat      DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
   tongTien     Float
   trangThai    String    @default("Cho_Xu_Ly")
   diaChiGiao   String
+  ghiChu       String?
   lyDoHuy      String?   // Lý do hủy đơn hàng
   ghiChuHuy   String?   // Ghi chú thêm khi hủy
+
+  confirmedAt  DateTime?
+  shippedAt    DateTime?
+  deliveredAt  DateTime?
+  completedAt  DateTime?
+  cancelledAt  DateTime?
+  codCollectedAt DateTime?
 
   chiTiet   ChiTietDonHang[]
   thanhToan ThanhToan[]

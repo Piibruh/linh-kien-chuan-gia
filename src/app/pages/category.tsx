@@ -140,6 +140,7 @@ export default function CategoryPage() {
           <CategoryFilters 
             onFilterChange={handleFilterChange}
             currentCategory={categoryLabel || undefined}
+            availableProducts={baseProducts}
           />
           
           {/* Category quick links */}
@@ -258,12 +259,12 @@ export default function CategoryPage() {
                   name={product.name}
                   price={product.price}
                   originalPrice={product.oldPrice}
-                  image={(.images ? .images[0] : (.image || ''))}
+                  image={(product.images?.length ? product.images[0] : (product.image || ''))}
                   rating={product.rating}
                   reviews={product.sold}
                   inStock={product.stock > 0}
                   maxStock={product.stock}
-                  specs={Object.entries(product.specs).slice(0, 3).map(([k, v]) => `${k}: ${v}`)}
+                  specs={Object.entries(product.specs || {}).slice(0, 3).map(([k, v]) => `${k}: ${v}`)}
                 />
               ))}
             </div>

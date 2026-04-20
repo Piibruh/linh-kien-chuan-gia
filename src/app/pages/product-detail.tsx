@@ -87,7 +87,7 @@ export default function ProductDetailPage() {
       id: product.id,
       name: product.name,
       price: product.price,
-      image: (.images ? .images[0] : (.image || '')),
+      image: (product.images?.length ? product.images[0] : (product.image || '')),
       maxStock: product.stock,
       inStock: true,
     });
@@ -109,7 +109,7 @@ export default function ProductDetailPage() {
       id: product.id,
       name: product.name,
       price: product.price,
-      image: (.images ? .images[0] : (.image || '')),
+      image: (product.images?.length ? product.images[0] : (product.image || '')),
       maxStock: product.stock,
       inStock: true,
     });
@@ -600,7 +600,7 @@ export default function ProductDetailPage() {
                 name={rp.name}
                 price={rp.price}
                 originalPrice={rp.oldPrice}
-                image={(.images ? .images[0] : (.image || ''))}
+                image={(rp.images?.length ? rp.images[0] : (rp.image || ''))}
                 rating={rp.rating}
                 reviews={rp.sold}
                 inStock={rp.stock > 0}

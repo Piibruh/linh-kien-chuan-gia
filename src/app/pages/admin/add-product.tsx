@@ -188,9 +188,13 @@ export default function AddProduct() {
     setStatus('published');
     setIsPublishing(true);
     try {
-      // Get featured image URL
+      // Get featured image URL and reorder so featured is first
       const featuredImage = images.find((img) => img.id === featuredImageId);
-      const imageUrls = images.map((img) => img.url);
+      // Put featured image first, then the rest in original order
+      const orderedImages = featuredImage
+        ? [featuredImage, ...images.filter((img) => img.id !== featuredImageId)]
+        : images;
+      const imageUrls = orderedImages.map((img) => img.url);
 
       // Prepare specifications object
       const specsObject: Record<string, string> = {};

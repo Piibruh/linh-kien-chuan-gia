@@ -26,13 +26,21 @@ import {
 import { toast } from 'sonner';
 import { useAdminStore, Order, OrderStatus } from '../../../store/adminStore';
 import { useAuthStore } from '../../../store/authStore';
+import {
+  ORDER_PAYMENT_STATUS_LABELS,
+  ORDER_STATUS_LABELS,
+  canOrderBeCancelled,
+  getAdminOrderActions,
+  getOrderActionLabel,
+  type OrderAction,
+} from '../../../lib/orderFlow';
 
 type SortField = 'id' | 'customerName' | 'total' | 'status' | 'createdAt';
 type SortOrder = 'asc' | 'desc';
 
 export default function OrdersList() {
   const navigate = useNavigate();
-  const { orders, products, updateOrderStatus, deleteOrder } = useAdminStore();
+  const { orders, products, updateOrderStatus, markOrderCodCollected, deleteOrder } = useAdminStore();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
 
   // UI State
@@ -186,6 +194,22 @@ export default function OrdersList() {
     }
   };
 
+  const handleOrderAction = async (order: Order, action: OrderAction) => {
+    setUpdatingOrderId(order.id);
+    try {
+      if (action === 'confirm') await updateOrderStatus(order.id, 'processing');
+      if (action === 'handover') await updateOrderStatus(order.id, 'shipping');
+      if (action === 'mark_delivered') await updateOrderStatus(order.id, 'delivered');
+      if (action === 'complete') await updateOrderStatus(order.id, 'completed');
+      if (action === 'collect_cod') await markOrderCodCollected(order.id);
+      toast.success(getOrderActionLabel(action));
+    } catch (e: any) {
+      toast.error(e?.message ?? 'KhÃ´ng thá»ƒ cáº­p nháº­t Ä‘Æ¡n hÃ ng');
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
+
   const handleExportCSV = () => {
     const csvContent = [
       ['Mã đơn', 'Người dùng', 'Email', 'Tổng tiền', 'Trạng thái', 'Ngày tạo'],
@@ -213,16 +237,18 @@ export default function OrdersList() {
     if (status === 'pending') return 'bg-yellow-100 text-yellow-800 border-yellow-200';
     if (status === 'processing') return 'bg-blue-100 text-blue-800 border-blue-200';
     if (status === 'shipping') return 'bg-purple-100 text-purple-800 border-purple-200';
+    if (status === 'delivered') return 'bg-teal-100 text-teal-800 border-teal-200';
     if (status === 'completed') return 'bg-green-100 text-green-800 border-green-200';
     if (status === 'cancelled') return 'bg-red-100 text-red-800 border-red-200';
     return 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
   const getStatusLabel = (status: OrderStatus) => {
-    if (status === 'pending') return 'Chờ xử lý';
+    if (status === 'pending') return 'Chờ xác nhận';
     if (status === 'processing') return 'Đang xử lý';
     if (status === 'shipping') return 'Đang giao';
-    if (status === 'completed') return 'Hoàn thành';
+    if (status === 'delivered') return 'Đã nhận';
+    if (status === 'completed') return 'Thành công';
     if (status === 'cancelled') return 'Đã hủy';
     return status;
   };
@@ -231,6 +257,7 @@ export default function OrdersList() {
     if (status === 'pending') return <Clock className="w-3 h-3" />;
     if (status === 'processing') return <Package className="w-3 h-3" />;
     if (status === 'shipping') return <Truck className="w-3 h-3" />;
+    if (status === 'delivered') return <Package className="w-3 h-3" />;
     if (status === 'completed') return <CheckCircle className="w-3 h-3" />;
     if (status === 'cancelled') return <XCircle className="w-3 h-3" />;
     return null;
@@ -314,7 +341,7 @@ export default function OrdersList() {
                 <Clock className="w-5 h-5 text-yellow-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Chờ xử lý</p>
+                <p className="text-sm text-gray-600">Chờ xác nhận</p>
                 <p className="text-2xl font-bold text-[#1d2327]">{statusStats.pending}</p>
               </div>
             </div>
@@ -415,10 +442,11 @@ export default function OrdersList() {
                   className="w-full px-3 py-2 border border-[#8c8f94] rounded focus:outline-none focus:border-[#2271b1] focus:ring-1 focus:ring-[#2271b1] text-sm"
                 >
                   <option value="all">Tất cả</option>
-                  <option value="pending">Chờ xử lý</option>
+                  <option value="pending">Chờ xác nhận</option>
                   <option value="processing">Đang xử lý</option>
                   <option value="shipping">Đang giao</option>
-                  <option value="completed">Hoàn thành</option>
+                  <option value="delivered">Đã nhận</option>
+                  <option value="completed">Thành công</option>
                   <option value="cancelled">Đã hủy</option>
                 </select>
               </div>
@@ -593,9 +621,11 @@ export default function OrdersList() {
                                 order.status
                               )}`}
                             >
-                              <option value="pending">Chờ xử lý</option>
+                              <option value="pending">Chờ xác nhận</option>
                               <option value="processing">Đang xử lý</option>
-                              <option value="completed">Hoàn thành</option>
+                              <option value="shipping">Đang giao</option>
+                              <option value="delivered">Đã nhận</option>
+                              <option value="completed">Thành công</option>
                               <option value="cancelled">Đã hủy</option>
                             </select>
                             {updatingOrderId === order.id && (
@@ -692,7 +722,7 @@ export default function OrdersList() {
                             return (
                               <div key={product.id} className="flex items-center gap-5 p-4 bg-gray-50 rounded-2xl border border-gray-100 hover:border-blue-200 transition-colors">
                                 <div className="w-20 h-20 bg-white rounded-xl overflow-hidden flex-shrink-0 shadow-sm border border-gray-100">
-                                  <img src={(.images ? .images[0] : (.image || '')) || 'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?w=100'} alt={product.name} className="w-full h-full object-cover" />
+                                  <img src={(pObj?.images?.length ? pObj.images[0] : (pObj?.image || '')) || 'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?w=100'} alt={product.name} className="w-full h-full object-cover" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="text-base font-bold text-gray-900 truncate">{product.name}</div>

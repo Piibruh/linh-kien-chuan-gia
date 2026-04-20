@@ -9,10 +9,12 @@ interface CategoryFiltersProps {
     inStockOnly: boolean;
   }) => void;
   currentCategory?: string;
+  availableProducts?: any[];
 }
 
-export function CategoryFilters({ onFilterChange, currentCategory }: CategoryFiltersProps) {
-  const products = useAdminStore((state) => state.products);
+export function CategoryFilters({ onFilterChange, currentCategory, availableProducts }: CategoryFiltersProps) {
+  const allProducts = useAdminStore((state) => state.products);
+  const products = availableProducts || allProducts;
   
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
@@ -114,7 +116,7 @@ export function CategoryFilters({ onFilterChange, currentCategory }: CategoryFil
     (inStockOnly ? 1 : 0);
 
   return (
-    <div className="sticky top-24 z-30 isolate self-start max-h-[calc(100vh-7rem)] flex flex-col">
+    <div className="sticky top-24 z-10 relative self-start max-h-[calc(100vh-7rem)] flex flex-col">
       <div className="bg-card border border-border rounded-xl shadow-sm flex flex-col min-h-0 w-full max-h-full overflow-hidden">
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between gap-2 p-4 bg-muted/30 border-b border-border">

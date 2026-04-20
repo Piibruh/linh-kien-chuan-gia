@@ -14,6 +14,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useAdminStore, type Order, type OrderStatus } from '../../store/adminStore';
 import { toast } from 'sonner';
 import { CancelOrderModal, CANCEL_REASONS_USER } from '../components/cancel-order-modal';
+import { ORDER_PAYMENT_STATUS_LABELS, canCompleteOrder } from '../../lib/orderFlow';
 
 interface UIOrder {
   id: string;
@@ -50,7 +51,7 @@ const statusConfig: Record<
   { label: string; color: string; icon: React.ElementType }
 > = {
   pending: {
-    label: 'Chờ xử lý',
+    label: 'Chờ xác nhận',
     color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
     icon: Clock,
   },
@@ -64,8 +65,13 @@ const statusConfig: Record<
     color: 'bg-purple-100 text-purple-800 border-purple-200',
     icon: Truck,
   },
+  delivered: {
+    label: 'Đã nhận',
+    color: 'bg-teal-100 text-teal-800 border-teal-200',
+    icon: Package,
+  },
   completed: {
-    label: 'Hoàn tất',
+    label: 'Thành công',
     color: 'bg-green-100 text-green-800 border-green-200',
     icon: CheckCircle,
   },
@@ -142,17 +148,24 @@ function buildTimelineFromOrder(o: Order): TimelineStep[] {
     title: 'Đang giao hàng',
     description: 'Đơn hàng đang được vận chuyển đến địa chỉ của bạn',
     time: o.shippedAt ? fmt(o.shippedAt) : null,
-    completed: s === 'shipping' || s === 'completed',
+    completed: s === 'shipping' || s === 'delivered' || s === 'completed',
   };
 
   const step4: TimelineStep = {
     title: 'Giao hàng thành công',
     description: 'Đơn hàng đã được giao thành công',
     time: o.deliveredAt ? fmt(o.deliveredAt) : null,
+    completed: s === 'delivered' || s === 'completed',
+  };
+
+  const step5: TimelineStep = {
+    title: 'HoÃ n táº¥t Ä‘Æ¡n hÃ ng',
+    description: 'KhÃ¡ch hÃ ng Ä‘Ã£ xÃ¡c nháº­n hoáº·c há»‡ thá»‘ng tá»± Ä‘á»™ng hoÃ n táº¥t',
+    time: o.completedAt ? fmt(o.completedAt) : null,
     completed: s === 'completed',
   };
 
-  return [step1, step2, step3, step4];
+  return [step1, step2, step3, step4, step5];
 }
 
 export default function OrdersPage() {
@@ -161,6 +174,7 @@ export default function OrdersPage() {
   const products = useAdminStore((s) => s.products);
   const cancelOrderByCustomer = useAdminStore((s) => s.cancelOrderByCustomer);
   const patchOrderCustomerInfo = useAdminStore((s) => s.patchOrderCustomerInfo);
+  const updateOrderStatus = useAdminStore((s) => s.updateOrderStatus);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<string>('all');
@@ -450,6 +464,25 @@ export default function OrdersPage() {
                 </span>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="rounded-lg border border-border p-4 bg-muted/20">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Thanh toÃ¡n</div>
+                  <div className="font-semibold text-foreground">
+                    {selectedOrder.sourceOrder.paymentMethod === 'online'
+                      ? 'Chuyá»ƒn khoáº£n / QR'
+                      : 'Thanh toÃ¡n khi nháº­n hÃ ng'}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-border p-4 bg-muted/20">
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+                    Tráº¡ng thÃ¡i thanh toÃ¡n
+                  </div>
+                  <div className="font-semibold text-foreground">
+                    {ORDER_PAYMENT_STATUS_LABELS[selectedOrder.sourceOrder.paymentStatus ?? 'awaiting_cod']}
+                  </div>
+                </div>
+              </div>
+
               {/* Timeline */}
               {selectedOrder.timeline && (
                 <div>
@@ -669,6 +702,30 @@ export default function OrdersPage() {
                   </span>
                 </div>
               </div>
+
+              {/* Confirm Delivery Button */}
+              {selectedOrder.sourceOrder.status === 'delivered' && (
+                <div className="border-t border-border pt-4 mt-6 flex justify-end">
+                  <button
+                    disabled={!canCompleteOrder(selectedOrder.sourceOrder)}
+                    onClick={async () => {
+                      try {
+                        await updateOrderStatus(selectedOrder.id, 'completed');
+                        toast.success('Đã hoàn tất đơn hàng');
+                        setSelectedOrder((prev) => prev ? { ...prev, status: 'completed', sourceOrder: { ...prev.sourceOrder, status: 'completed', completedAt: new Date().toISOString() } } : null);
+                      } catch (e: any) {
+                        toast.error(e?.message ?? 'Có lỗi xảy ra khi hoàn tất đơn');
+                      }
+                    }}
+                    className="px-6 py-2.5 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors shadow flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    <CheckCircle className="h-5 w-5" />
+                    {canCompleteOrder(selectedOrder.sourceOrder)
+                      ? 'Hoàn thành đơn hàng'
+                      : 'Chờ shop xác nhận COD'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

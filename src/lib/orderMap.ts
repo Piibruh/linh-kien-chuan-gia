@@ -1,4 +1,5 @@
-import type { Order, OrderStatus } from '../store/adminStore';
+import type { Order } from '../store/adminStore';
+import type { OrderPaymentMethod, OrderPaymentStatus, OrderStatus } from './orderFlow';
 
 function iso(d: unknown): string | null {
   if (d == null || d === '') return null;
@@ -25,13 +26,17 @@ export function mapPrismaOrderToStore(o: {
   status: string;
   createdAt: string;
   updatedAt: string;
+  paymentMethod?: string | null;
+  paymentStatus?: string | null;
   notes?: string | null;
   cancelReason?: string | null;
   cancelNote?: string | null;
   confirmedAt?: unknown;
   shippedAt?: unknown;
   deliveredAt?: unknown;
+  completedAt?: unknown;
   cancelledAt?: unknown;
+  codCollectedAt?: unknown;
   items: Array<{
     productId: string;
     name: string;
@@ -60,12 +65,16 @@ export function mapPrismaOrderToStore(o: {
     phoneNumber: o.phone,
     createdAt: o.createdAt,
     updatedAt: o.updatedAt,
+    paymentMethod: (o.paymentMethod ?? 'cod') as OrderPaymentMethod,
+    paymentStatus: (o.paymentStatus ?? 'awaiting_cod') as OrderPaymentStatus,
     notes: o.notes ?? null,
     cancelReason: o.cancelReason ?? null,
     cancelNote: o.cancelNote ?? null,
     confirmedAt: iso(o.confirmedAt),
     shippedAt: iso(o.shippedAt),
     deliveredAt: iso(o.deliveredAt),
+    completedAt: iso(o.completedAt),
     cancelledAt: iso(o.cancelledAt),
+    codCollectedAt: iso(o.codCollectedAt),
   };
 }

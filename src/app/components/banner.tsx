@@ -18,7 +18,7 @@ export function HeroBanner() {
               Arduino, ESP32, cảm biến và module cho mọi dự án DIY của bạn
             </p>
             <div className="flex flex-wrap gap-4">
-              <a href="/products" className="bg-white text-primary px-6 py-3 rounded-lg font-medium hover:bg-white/90 transition-colors flex items-center gap-2">
+              <a href="/category/all" className="bg-white text-primary px-6 py-3 rounded-lg font-medium hover:bg-white/90 transition-colors flex items-center gap-2">
                 Mua ngay
                 <ChevronRight className="h-5 w-5" />
               </a>

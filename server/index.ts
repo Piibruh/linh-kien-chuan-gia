@@ -61,8 +61,76 @@ function getUser(req: express.Request): JwtPayload {
   return (req as express.Request & { user: JwtPayload }).user;
 }
 
+const ORDER_STATUS_DB = {
+  pending: 'Cho_Xu_Ly',
+  processing: 'Dang_Xu_Ly',
+  shipping: 'Dang_Giao',
+  delivered: 'Da_Nhan',
+  completed: 'Hoan_Thanh',
+  cancelled: 'Da_Huy',
+} as const;
+
+const ORDER_STATUS_UI = Object.fromEntries(
+  Object.entries(ORDER_STATUS_DB).map(([ui, db]) => [db, ui])
+) as Record<(typeof ORDER_STATUS_DB)[keyof typeof ORDER_STATUS_DB], keyof typeof ORDER_STATUS_DB>;
+
+const AUTO_COMPLETE_AFTER_MS = 3 * 24 * 60 * 60 * 1000;
+
+const orderInclude = {
+  nguoiDung: true,
+  chiTiet: { include: { sanPham: true } },
+  thanhToan: { orderBy: { ngayTT: 'desc' as const } },
+  vanChuyen: true,
+};
+
+function isStaffOrAdmin(role: string) {
+  return role === 'admin' || role === 'staff';
+}
+
+function combineAddress(address?: string, ward?: string, district?: string, city?: string) {
+  return [address, ward, district, city].map((part) => String(part ?? '').trim()).filter(Boolean).join(', ');
+}
+
+function getPrimaryPayment(dh: any) {
+  return Array.isArray(dh.thanhToan) && dh.thanhToan.length > 0 ? dh.thanhToan[0] : null;
+}
+
+function getPaymentStatus(dh: any): 'awaiting_cod' | 'awaiting_payment' | 'paid' {
+  const payment = getPrimaryPayment(dh);
+  if (!payment) return 'awaiting_payment';
+  if (payment.trangThai === 'Da_Thanh_Toan') return 'paid';
+  return payment.phuongThuc === 'cod' ? 'awaiting_cod' : 'awaiting_payment';
+}
+
+function isPaymentSettled(dh: any) {
+  return getPaymentStatus(dh) === 'paid';
+}
+
+async function autoCompleteDeliveredOrders() {
+  const threshold = new Date(Date.now() - AUTO_COMPLETE_AFTER_MS);
+  const candidates = await prisma.donHang.findMany({
+    where: {
+      trangThai: ORDER_STATUS_DB.delivered,
+      deliveredAt: { not: null, lte: threshold },
+    },
+    include: { thanhToan: true },
+  });
+
+  const eligibleIds = candidates.filter(isPaymentSettled).map((order) => order.maDonHang);
+  if (eligibleIds.length === 0) return;
+
+  await prisma.donHang.updateMany({
+    where: { maDonHang: { in: eligibleIds } },
+    data: {
+      trangThai: ORDER_STATUS_DB.completed,
+      completedAt: new Date(),
+    },
+  });
+}
+
 // Map Prisma order to frontend shape
 function mapOrder(dh: any) {
+  const payment = getPrimaryPayment(dh);
   return {
     id: dh.maDonHang,
     customerId: dh.maNguoiDung,
@@ -76,10 +144,18 @@ function mapOrder(dh: any) {
     total: dh.tongTien,
     status: mapStatus(dh.trangThai),
     createdAt: dh.ngayDat?.toISOString?.() ?? new Date().toISOString(),
-    updatedAt: dh.ngayDat?.toISOString?.() ?? new Date().toISOString(),
-    notes: null,
+    updatedAt: dh.updatedAt?.toISOString?.() ?? dh.ngayDat?.toISOString?.() ?? new Date().toISOString(),
+    paymentMethod: payment?.phuongThuc === 'online' ? 'online' : 'cod',
+    paymentStatus: getPaymentStatus(dh),
+    notes: dh.ghiChu ?? null,
     cancelReason: dh.lyDoHuy ?? null,
     cancelNote: dh.ghiChuHuy ?? null,
+    confirmedAt: dh.confirmedAt?.toISOString?.() ?? null,
+    shippedAt: dh.shippedAt?.toISOString?.() ?? null,
+    deliveredAt: dh.deliveredAt?.toISOString?.() ?? null,
+    completedAt: dh.completedAt?.toISOString?.() ?? null,
+    cancelledAt: dh.cancelledAt?.toISOString?.() ?? null,
+    codCollectedAt: dh.codCollectedAt?.toISOString?.() ?? null,
     items: (dh.chiTiet ?? []).map((ct: any) => ({
       productId: ct.maSanPham,
       name: ct.sanPham?.tenSanPham ?? 'Sản phẩm',
@@ -90,25 +166,11 @@ function mapOrder(dh: any) {
 }
 
 function mapStatus(dbStatus: string): string {
-  const map: Record<string, string> = {
-    Cho_Xu_Ly: 'pending',
-    Dang_Xu_Ly: 'processing',
-    Dang_Giao: 'shipping',
-    Hoan_Thanh: 'completed',
-    Da_Huy: 'cancelled',
-  };
-  return map[dbStatus] ?? 'pending';
+  return ORDER_STATUS_UI[dbStatus as keyof typeof ORDER_STATUS_UI] ?? 'pending';
 }
 
 function mapStatusToDb(uiStatus: string): string {
-  const map: Record<string, string> = {
-    pending: 'Cho_Xu_Ly',
-    processing: 'Dang_Xu_Ly',
-    shipping: 'Dang_Giao',
-    completed: 'Hoan_Thanh',
-    cancelled: 'Da_Huy',
-  };
-  return map[uiStatus] ?? 'Cho_Xu_Ly';
+  return ORDER_STATUS_DB[uiStatus as keyof typeof ORDER_STATUS_DB] ?? ORDER_STATUS_DB.pending;
 }
 
 // Map Prisma product to frontend shape
@@ -359,12 +421,13 @@ app.delete('/api/products/:id', authRequired, requireRole('admin'), async (req, 
 
 app.get('/api/orders', authRequired, async (req, res) => {
   const u = getUser(req);
-  const isAdmin = u.role === 'admin' || u.role === 'staff';
+  const isAdmin = isStaffOrAdmin(u.role);
+  await autoCompleteDeliveredOrders();
   const where = isAdmin ? {} : { maNguoiDung: u.sub };
 
   const orders = await prisma.donHang.findMany({
     where,
-    include: { nguoiDung: true, chiTiet: { include: { sanPham: true } } },
+    include: orderInclude,
     orderBy: { ngayDat: 'desc' },
   });
 
@@ -374,17 +437,30 @@ app.get('/api/orders', authRequired, async (req, res) => {
 app.post('/api/orders', authRequired, async (req, res) => {
   const u = getUser(req);
   const body = req.body;
+  const paymentMethod = body.paymentMethod === 'online' ? 'online' : 'cod';
+  const fullAddress = combineAddress(body.address, body.ward, body.district, body.city);
 
   try {
     const order = await prisma.$transaction(async (tx) => {
+      for (const item of body.items) {
+        const sp = await tx.sanPham.findUnique({ where: { maSanPham: item.productId } });
+        if (!sp) {
+          throw new Error(`KhÃ´ng tÃ¬m tháº¥y sáº£n pháº©m ${item.productId}`);
+        }
+        if (sp.soLuongTon < Number(item.quantity)) {
+          throw new Error(`Sáº£n pháº©m ${sp.tenSanPham} khÃ´ng Ä‘á»§ tá»“n kho`);
+        }
+      }
+
       const dh = await tx.donHang.create({
         data: {
           maNguoiDung: u.sub,
           tenNguoiNhan: body.fullName,
           sdtNhan: body.phone,
-          diaChiGiao: body.address,
+          diaChiGiao: fullAddress,
+          ghiChu: body.notes ? String(body.notes).trim() : null,
           tongTien: body.total,
-          trangThai: 'Cho_Xu_Ly',
+          trangThai: ORDER_STATUS_DB.pending,
           chiTiet: {
             create: body.items.map((i: any) => ({
               maSanPham: i.productId,
@@ -394,19 +470,20 @@ app.post('/api/orders', authRequired, async (req, res) => {
           },
           thanhToan: {
             create: {
-              phuongThuc: body.paymentMethod,
-              trangThai: 'Chua_Thanh_Toan',
+              phuongThuc: paymentMethod,
+              trangThai: paymentMethod === 'online' ? 'Da_Thanh_Toan' : 'Chua_Thanh_Toan',
+              ngayTT: paymentMethod === 'online' ? new Date() : null,
             },
           },
           vanChuyen: {
             create: {
               donVi: body.shippingMethod,
               phiVanChuyen: body.shippingFee,
-              trangThai: 'Cho_Xu_Ly',
+              trangThai: ORDER_STATUS_DB.pending,
             },
           },
         },
-        include: { chiTiet: { include: { sanPham: true } }, nguoiDung: true },
+        include: orderInclude,
       });
 
       // Update stock
@@ -428,17 +505,146 @@ app.post('/api/orders', authRequired, async (req, res) => {
   }
 });
 
-app.patch('/api/orders/:id/status', authRequired, requireRole('admin', 'staff'), async (req, res) => {
+app.patch('/api/orders/:id/status', authRequired, async (req, res) => {
+  await autoCompleteDeliveredOrders();
+  const u = getUser(req);
   const { status } = req.body;
   try {
-    const dh = await prisma.donHang.update({
+    const dh = await prisma.donHang.findUnique({
       where: { maDonHang: req.params.id },
-      data: { trangThai: mapStatusToDb(status) },
-      include: { chiTiet: { include: { sanPham: true } }, nguoiDung: true },
+      include: orderInclude,
     });
-    res.json({ order: mapOrder(dh) });
+    if (!dh) {
+      res.status(404).json({ error: 'KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n hÃ ng' });
+      return;
+    }
+
+    const currentStatus = mapStatus(dh.trangThai);
+    const nextStatus = String(status ?? '').trim();
+    const isManager = isStaffOrAdmin(u.role);
+    const isOwner = dh.maNguoiDung === u.sub;
+    const now = new Date();
+    const data: any = {};
+    const shippingData: any = {};
+
+    if (nextStatus === 'processing') {
+      if (!isManager) {
+        res.status(403).json({ error: 'Chá»‰ admin/staff Ä‘Æ°á»£c xÃ¡c nháº­n Ä‘Æ¡n' });
+        return;
+      }
+      if (currentStatus !== 'pending') {
+        res.status(400).json({ error: 'ÄÆ¡n hÃ ng chá»‰ cÃ³ thá»ƒ xÃ¡c nháº­n tá»« tráº¡ng thÃ¡i chá» xÃ¡c nháº­n' });
+        return;
+      }
+      data.trangThai = ORDER_STATUS_DB.processing;
+      data.confirmedAt = dh.confirmedAt ?? now;
+      shippingData.trangThai = ORDER_STATUS_DB.processing;
+    } else if (nextStatus === 'shipping') {
+      if (!isManager) {
+        res.status(403).json({ error: 'Chá»‰ admin/staff Ä‘Æ°á»£c bÃ n giao cho váº­n chuyá»ƒn' });
+        return;
+      }
+      if (currentStatus !== 'processing') {
+        res.status(400).json({ error: 'ÄÆ¡n hÃ ng pháº£i Ä‘Æ°á»£c xÃ¡c nháº­n trÆ°á»›c khi chuyá»ƒn giao' });
+        return;
+      }
+      data.trangThai = ORDER_STATUS_DB.shipping;
+      data.confirmedAt = dh.confirmedAt ?? now;
+      data.shippedAt = now;
+      shippingData.trangThai = ORDER_STATUS_DB.shipping;
+    } else if (nextStatus === 'delivered') {
+      if (!isManager) {
+        res.status(403).json({ error: 'Chá»‰ admin/staff Ä‘Æ°á»£c Ä‘Ã¡nh dáº¥u Ä‘Ã£ giao' });
+        return;
+      }
+      if (currentStatus !== 'shipping') {
+        res.status(400).json({ error: 'ÄÆ¡n hÃ ng pháº£i Ä‘ang giao má»›i cÃ³ thá»ƒ Ä‘Ã¡nh dáº¥u Ä‘Ã£ giao' });
+        return;
+      }
+      data.trangThai = ORDER_STATUS_DB.delivered;
+      data.deliveredAt = now;
+      shippingData.trangThai = ORDER_STATUS_DB.delivered;
+    } else if (nextStatus === 'completed') {
+      if (!isManager && !isOwner) {
+        res.status(403).json({ error: 'KhÃ´ng cÃ³ quyá»n hoÃ n táº¥t Ä‘Æ¡n hÃ ng' });
+        return;
+      }
+      if (currentStatus !== 'delivered') {
+        res.status(400).json({ error: 'ÄÆ¡n hÃ ng chá»‰ hoÃ n táº¥t sau khi Ä‘Ã£ giao' });
+        return;
+      }
+      if (!isPaymentSettled(dh)) {
+        res.status(400).json({ error: 'ÄÆ¡n COD chÆ°a Ä‘Æ°á»£c xÃ¡c nháº­n Ä‘Ã£ thu tiá»n' });
+        return;
+      }
+      data.trangThai = ORDER_STATUS_DB.completed;
+      data.completedAt = now;
+    } else {
+      res.status(400).json({ error: 'KhÃ´ng há»— trá»£ chuyá»ƒn sang tráº¡ng thÃ¡i nÃ y' });
+      return;
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      if (Object.keys(shippingData).length > 0) {
+        await tx.vanChuyen.updateMany({
+          where: { maDonHang: req.params.id },
+          data: shippingData,
+        });
+      }
+      return tx.donHang.update({
+        where: { maDonHang: req.params.id },
+        data,
+        include: orderInclude,
+      });
+    });
+    res.json({ order: mapOrder(updated) });
   } catch (e: any) {
     res.status(400).json({ error: e.message || 'Không thể cập nhật trạng thái' });
+  }
+});
+
+app.patch('/api/orders/:id/payment', authRequired, requireRole('admin', 'staff'), async (req, res) => {
+  const { collected } = req.body ?? {};
+  if (!collected) {
+    res.status(400).json({ error: 'Thiáº¿u thÃ´ng tin xÃ¡c nháº­n Ä‘Ã£ thu COD' });
+    return;
+  }
+
+  try {
+    const dh = await prisma.donHang.findUnique({
+      where: { maDonHang: req.params.id },
+      include: orderInclude,
+    });
+    if (!dh) {
+      res.status(404).json({ error: 'KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n hÃ ng' });
+      return;
+    }
+
+    const payment = getPrimaryPayment(dh);
+    if (!payment || payment.phuongThuc !== 'cod') {
+      res.status(400).json({ error: 'ÄÆ¡n nÃ y khÃ´ng pháº£i thanh toÃ¡n COD' });
+      return;
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      await tx.thanhToan.update({
+        where: { maThanhToan: payment.maThanhToan },
+        data: {
+          trangThai: 'Da_Thanh_Toan',
+          ngayTT: new Date(),
+        },
+      });
+
+      return tx.donHang.update({
+        where: { maDonHang: req.params.id },
+        data: { codCollectedAt: new Date() },
+        include: orderInclude,
+      });
+    });
+
+    res.json({ order: mapOrder(updated) });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message || 'KhÃ´ng thá»ƒ xÃ¡c nháº­n Ä‘Ã£ thu COD' });
   }
 });
 
@@ -448,7 +654,7 @@ app.post('/api/orders/:id/cancel', authRequired, async (req, res) => {
   try {
     const dh = await prisma.donHang.findUnique({
       where: { maDonHang: req.params.id },
-      include: { chiTiet: true },
+      include: { chiTiet: true, thanhToan: true },
     });
 
     if (!dh) {
@@ -456,16 +662,19 @@ app.post('/api/orders/:id/cancel', authRequired, async (req, res) => {
       return;
     }
 
-    // Customer can only cancel their own pending orders
-    if (u.role !== 'admin' && u.role !== 'staff') {
+    const currentStatus = mapStatus(dh.trangThai);
+    if (!isStaffOrAdmin(u.role)) {
       if (dh.maNguoiDung !== u.sub) {
         res.status(403).json({ error: 'Không có quyền hủy đơn này' });
         return;
       }
-      if (dh.trangThai !== 'Cho_Xu_Ly') {
+      if (currentStatus !== 'pending') {
         res.status(400).json({ error: 'Chỉ có thể hủy đơn hàng đang chờ xử lý' });
         return;
       }
+    } else if (!['pending', 'processing', 'shipping'].includes(currentStatus)) {
+      res.status(400).json({ error: 'ÄÆ¡n hÃ ng Ä‘Ã£ giao hoáº·c Ä‘Ã£ hoÃ n táº¥t khÃ´ng thá»ƒ há»§y' });
+      return;
     }
 
     if (!reason) {
@@ -484,11 +693,12 @@ app.post('/api/orders/:id/cancel', authRequired, async (req, res) => {
       return tx.donHang.update({
         where: { maDonHang: req.params.id },
         data: {
-          trangThai: 'Da_Huy',
+          trangThai: ORDER_STATUS_DB.cancelled,
           lyDoHuy: String(reason).trim(),
           ghiChuHuy: note ? String(note).trim() : null,
+          cancelledAt: new Date(),
         },
-        include: { chiTiet: { include: { sanPham: true } }, nguoiDung: true },
+        include: orderInclude,
       });
     });
 
@@ -500,27 +710,38 @@ app.post('/api/orders/:id/cancel', authRequired, async (req, res) => {
 
 app.patch('/api/orders/:id/customer', authRequired, async (req, res) => {
   const u = getUser(req);
-  const { notes, phone, fullName, address } = req.body;
+  const { notes, phone, fullName, address, city, district, ward } = req.body;
   try {
-    const dh = await prisma.donHang.findUnique({ where: { maDonHang: req.params.id } });
+    const dh = await prisma.donHang.findUnique({
+      where: { maDonHang: req.params.id },
+      include: orderInclude,
+    });
     if (!dh) {
       res.status(404).json({ error: 'Không tìm thấy đơn hàng' });
       return;
     }
-    if (u.role !== 'admin' && u.role !== 'staff' && dh.maNguoiDung !== u.sub) {
+    const isManager = isStaffOrAdmin(u.role);
+    if (!isManager && dh.maNguoiDung !== u.sub) {
       res.status(403).json({ error: 'Không có quyền chỉnh sửa đơn này' });
+      return;
+    }
+    if (!isManager && mapStatus(dh.trangThai) !== 'pending') {
+      res.status(400).json({ error: 'Chá»‰ cÃ³ thá»ƒ sá»­a Ä‘Æ¡n khi cÃ²n chá» xÃ¡c nháº­n' });
       return;
     }
 
     const data: any = {};
     if (phone !== undefined) data.sdtNhan = phone;
     if (fullName !== undefined) data.tenNguoiNhan = fullName;
-    if (address !== undefined) data.diaChiGiao = address;
+    if (notes !== undefined) data.ghiChu = notes ? String(notes).trim() : null;
+    if (address !== undefined || city !== undefined || district !== undefined || ward !== undefined) {
+      data.diaChiGiao = combineAddress(address ?? dh.diaChiGiao, ward, district, city);
+    }
 
     const updated = await prisma.donHang.update({
       where: { maDonHang: req.params.id },
       data,
-      include: { chiTiet: { include: { sanPham: true } }, nguoiDung: true },
+      include: orderInclude,
     });
 
     res.json({ order: mapOrder(updated) });

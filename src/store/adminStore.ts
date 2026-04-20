@@ -4,6 +4,7 @@ import { Product } from './productStore';
 import { User, UserRole, useAuthStore } from './authStore';
 import productsData from '../data/products.json';
 import { mapPrismaOrderToStore } from '../lib/orderMap';
+import type { OrderPaymentMethod, OrderPaymentStatus, OrderStatus } from '../lib/orderFlow';
 
 // Normalize product images
 const CATEGORY_IMAGES: Record<string, string> = {
@@ -43,7 +44,7 @@ const safeJsonFetch = async (url: string, options: RequestInit = {}) => {
 };
 
 // ✅ Align user orders page + admin orders with a shared status enum
-export type OrderStatus = 'pending' | 'processing' | 'shipping' | 'completed' | 'cancelled';
+export type { OrderPaymentMethod, OrderPaymentStatus, OrderStatus } from '../lib/orderFlow';
 
 export interface Order {
   id: string;
@@ -67,6 +68,8 @@ export interface Order {
   phoneNumber: string;
   createdAt: string;
   updatedAt: string;
+  paymentMethod?: OrderPaymentMethod;
+  paymentStatus?: OrderPaymentStatus;
   /** Ghi chú đơn hàng (khách) */
   notes?: string | null;
   /** Lý do hủy đơn hàng */
@@ -77,7 +80,9 @@ export interface Order {
   confirmedAt?: string | null;
   shippedAt?: string | null;
   deliveredAt?: string | null;
+  completedAt?: string | null;
   cancelledAt?: string | null;
+  codCollectedAt?: string | null;
 }
 
 export type StoredUser = User & {
@@ -303,6 +308,92 @@ const INITIAL_CATEGORIES: string[] = ['Vi điều khiển', 'Cảm biến', 'Mod
 // Mock API delay
 const delay = (ms: number = 500) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const getDefaultPaymentStatus = (
+  paymentMethod: OrderPaymentMethod = 'cod'
+): OrderPaymentStatus => (paymentMethod === 'cod' ? 'awaiting_cod' : 'paid');
+
+const normalizeOrder = (order: Order): Order => ({
+  ...order,
+  paymentMethod: order.paymentMethod ?? 'cod',
+  paymentStatus: order.paymentStatus ?? getDefaultPaymentStatus(order.paymentMethod ?? 'cod'),
+  notes: order.notes ?? null,
+  cancelReason: order.cancelReason ?? null,
+  cancelNote: order.cancelNote ?? null,
+  confirmedAt: order.confirmedAt ?? null,
+  shippedAt: order.shippedAt ?? null,
+  deliveredAt: order.deliveredAt ?? null,
+  completedAt: order.completedAt ?? null,
+  cancelledAt: order.cancelledAt ?? null,
+  codCollectedAt: order.codCollectedAt ?? null,
+});
+
+const applyLocalStatusUpdate = (order: Order, nextStatus: OrderStatus): Order => {
+  const now = nowIso();
+  const paymentMethod = order.paymentMethod ?? 'cod';
+  const paymentStatus = order.paymentStatus ?? getDefaultPaymentStatus(paymentMethod);
+
+  if (nextStatus === 'processing' && order.status === 'pending') {
+    return normalizeOrder({
+      ...order,
+      status: 'processing',
+      updatedAt: now,
+      confirmedAt: order.confirmedAt ?? now,
+    });
+  }
+
+  if (nextStatus === 'shipping' && order.status === 'processing') {
+    return normalizeOrder({
+      ...order,
+      status: 'shipping',
+      updatedAt: now,
+      confirmedAt: order.confirmedAt ?? now,
+      shippedAt: now,
+    });
+  }
+
+  if (nextStatus === 'delivered' && order.status === 'shipping') {
+    return normalizeOrder({
+      ...order,
+      status: 'delivered',
+      updatedAt: now,
+      deliveredAt: now,
+      shippedAt: order.shippedAt ?? now,
+    });
+  }
+
+  if (nextStatus === 'completed' && order.status === 'delivered' && paymentStatus === 'paid') {
+    return normalizeOrder({
+      ...order,
+      status: 'completed',
+      updatedAt: now,
+      completedAt: now,
+      deliveredAt: order.deliveredAt ?? now,
+    });
+  }
+
+  if (nextStatus === 'cancelled' && ['pending', 'processing', 'shipping'].includes(order.status)) {
+    return normalizeOrder({
+      ...order,
+      status: 'cancelled',
+      updatedAt: now,
+      cancelledAt: now,
+    });
+  }
+
+  throw new Error('Trạng thái đơn hàng không hợp lệ cho bước tiếp theo');
+};
+
+const applyLocalPaymentCollection = (order: Order): Order => {
+  const now = nowIso();
+  return normalizeOrder({
+    ...order,
+    updatedAt: now,
+    paymentMethod: 'cod',
+    paymentStatus: 'paid',
+    codCollectedAt: now,
+  });
+};
+
 interface AdminStore {
   // Products
   products: Product[];
@@ -315,6 +406,7 @@ interface AdminStore {
   orders: Order[];
   createOrder: (payload: CreateOrderPayload) => Promise<Order>;
   updateOrderStatus: (id: string, status: OrderStatus) => Promise<void>;
+  markOrderCodCollected: (id: string) => Promise<void>;
   deleteOrder: (id: string) => Promise<void>;
   setOrdersFromServer: (orders: Order[]) => void;
   bootstrapFromApi: () => Promise<void>;
@@ -356,7 +448,7 @@ export const useAdminStore = create<AdminStore>()(
     (set, get) => ({
       // Initial state
       products: INITIAL_PRODUCTS,
-      orders: INITIAL_ORDERS,
+      orders: INITIAL_ORDERS.map(normalizeOrder),
       users: INITIAL_USERS,
       categories: INITIAL_CATEGORIES,
       storeConfig: {
@@ -495,9 +587,12 @@ export const useAdminStore = create<AdminStore>()(
             status: 'pending',
             createdAt: now,
             updatedAt: now,
+            paymentMethod: payload.paymentMethod ?? 'cod',
+            paymentStatus: getDefaultPaymentStatus(payload.paymentMethod ?? 'cod'),
           };
-          set((state) => ({ orders: [newOrder, ...state.orders] }));
-          return newOrder;
+          const normalized = normalizeOrder(newOrder);
+          set((state) => ({ orders: [normalized, ...state.orders] }));
+          return normalized;
         };
 
         // Try to reach the API, fall back to local if unavailable
@@ -548,15 +643,17 @@ export const useAdminStore = create<AdminStore>()(
           }
 
           const raw = data.order;
-          const mapped = mapPrismaOrderToStore({
-            ...raw,
-            createdAt:
-              typeof raw.createdAt === 'string' ? raw.createdAt : new Date(raw.createdAt).toISOString(),
-            updatedAt:
-              typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date(raw.updatedAt).toISOString(),
-          });
+          const mapped = normalizeOrder(
+            mapPrismaOrderToStore({
+              ...raw,
+              createdAt:
+                typeof raw.createdAt === 'string' ? raw.createdAt : new Date(raw.createdAt).toISOString(),
+              updatedAt:
+                typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date(raw.updatedAt).toISOString(),
+            })
+          );
 
-          set((state) => ({ orders: [mapped, ...state.orders] }));
+          set((state) => ({ orders: [normalizeOrder(mapped), ...state.orders] }));
 
           try {
             const pr = await fetch('/api/products');
@@ -568,7 +665,7 @@ export const useAdminStore = create<AdminStore>()(
             /* ignore */
           }
 
-          return mapped;
+          return normalizeOrder(mapped);
         } catch (err: any) {
           // Network error or API unavailable → use local demo mode
           if (err?.message && !err.message.includes('Không thể tạo')) {
@@ -590,9 +687,13 @@ export const useAdminStore = create<AdminStore>()(
               },
               body: JSON.stringify({ status }),
             });
-            if (res.ok) {
-              const { order: raw } = await res.json();
-              const mapped = mapPrismaOrderToStore({
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              throw new Error(typeof data?.error === 'string' ? data.error : 'Không thể cập nhật trạng thái');
+            }
+            const raw = data.order;
+            const mapped = normalizeOrder(
+              mapPrismaOrderToStore({
                 ...raw,
                 createdAt:
                   typeof raw.createdAt === 'string'
@@ -602,26 +703,89 @@ export const useAdminStore = create<AdminStore>()(
                   typeof raw.updatedAt === 'string'
                     ? raw.updatedAt
                     : new Date(raw.updatedAt).toISOString(),
-              });
-              set((state) => ({
-                orders: state.orders.map((o) => (o.id === id ? mapped : o)),
-              }));
-              return;
+              })
+            );
+            set((state) => ({
+              orders: state.orders.map((o) => (o.id === id ? mapped : o)),
+            }));
+            return;
+          } catch (err: any) {
+            if (err instanceof Error && err.message.includes('Không thể')) {
+              throw err;
             }
-          } catch {
-            /* offline */
           }
         }
         await delay();
+        let updatedOrder: Order | null = null;
         set((state) => ({
-          orders: state.orders.map((o) =>
-            o.id === id ? { ...o, status, updatedAt: nowIso() } : o
-          ),
+          orders: state.orders.map((o) => {
+            if (o.id !== id) return o;
+            updatedOrder = applyLocalStatusUpdate(normalizeOrder(o), status);
+            return updatedOrder;
+          }),
         }));
+        if (!updatedOrder) {
+          throw new Error('Không tìm thấy đơn hàng');
+        }
+      },
+
+      markOrderCodCollected: async (id) => {
+        const token = useAuthStore.getState().token;
+        if (token) {
+          try {
+            const res = await fetch(`/api/orders/${encodeURIComponent(id)}/payment`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ collected: true }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              throw new Error(typeof data?.error === 'string' ? data.error : 'Không thể xác nhận COD');
+            }
+            const raw = data.order;
+            const mapped = normalizeOrder(
+              mapPrismaOrderToStore({
+                ...raw,
+                createdAt:
+                  typeof raw.createdAt === 'string'
+                    ? raw.createdAt
+                    : new Date(raw.createdAt).toISOString(),
+                updatedAt:
+                  typeof raw.updatedAt === 'string'
+                    ? raw.updatedAt
+                    : new Date(raw.updatedAt).toISOString(),
+              })
+            );
+            set((state) => ({
+              orders: state.orders.map((o) => (o.id === id ? mapped : o)),
+            }));
+            return;
+          } catch (err: any) {
+            if (err instanceof Error && err.message.includes('Không thể')) {
+              throw err;
+            }
+          }
+        }
+
+        await delay();
+        let updatedOrder: Order | null = null;
+        set((state) => ({
+          orders: state.orders.map((o) => {
+            if (o.id !== id) return o;
+            updatedOrder = applyLocalPaymentCollection(normalizeOrder(o));
+            return updatedOrder;
+          }),
+        }));
+        if (!updatedOrder) {
+          throw new Error('Không tìm thấy đơn hàng');
+        }
       },
 
       setOrdersFromServer: (orders) => {
-        set({ orders });
+        set({ orders: orders.map(normalizeOrder) });
       },
 
       bootstrapFromApi: async () => {
@@ -641,17 +805,19 @@ export const useAdminStore = create<AdminStore>()(
               const { orders } = await or.json();
               set({
                 orders: (orders as any[]).map((o) =>
-                  mapPrismaOrderToStore({
-                    ...o,
-                    createdAt:
-                      typeof o.createdAt === 'string'
-                        ? o.createdAt
-                        : new Date(o.createdAt).toISOString(),
-                    updatedAt:
-                      typeof o.updatedAt === 'string'
-                        ? o.updatedAt
-                        : new Date(o.updatedAt).toISOString(),
-                  })
+                  normalizeOrder(
+                    mapPrismaOrderToStore({
+                      ...o,
+                      createdAt:
+                        typeof o.createdAt === 'string'
+                          ? o.createdAt
+                          : new Date(o.createdAt).toISOString(),
+                      updatedAt:
+                        typeof o.updatedAt === 'string'
+                          ? o.updatedAt
+                          : new Date(o.updatedAt).toISOString(),
+                    })
+                  )
                 ),
               });
             }
@@ -671,9 +837,19 @@ export const useAdminStore = create<AdminStore>()(
 
         // Offline / demo mode — cancel locally
         const localCancel = () => {
+          const now = nowIso();
           set((state) => ({
             orders: state.orders.map((o) =>
-              o.id === id ? { ...o, status: 'cancelled' as OrderStatus, cancelReason: reason, cancelNote: note ?? null, updatedAt: nowIso(), cancelledAt: nowIso() } : o
+              o.id === id
+                ? normalizeOrder({
+                    ...o,
+                    status: 'cancelled' as OrderStatus,
+                    cancelReason: reason,
+                    cancelNote: note ?? null,
+                    updatedAt: now,
+                    cancelledAt: now,
+                  })
+                : o
             ),
           }));
         };
@@ -697,13 +873,15 @@ export const useAdminStore = create<AdminStore>()(
             throw new Error(typeof data?.error === 'string' ? data.error : 'Không thể hủy đơn');
           }
           const raw = data.order;
-          const mapped = mapPrismaOrderToStore({
-            ...raw,
-            createdAt:
-              typeof raw.createdAt === 'string' ? raw.createdAt : new Date(raw.createdAt).toISOString(),
-            updatedAt:
-              typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date(raw.updatedAt).toISOString(),
-          });
+          const mapped = normalizeOrder(
+            mapPrismaOrderToStore({
+              ...raw,
+              createdAt:
+                typeof raw.createdAt === 'string' ? raw.createdAt : new Date(raw.createdAt).toISOString(),
+              updatedAt:
+                typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date(raw.updatedAt).toISOString(),
+            })
+          );
           set((state) => ({
             orders: state.orders.map((o) => (o.id === id ? mapped : o)),
           }));
@@ -735,7 +913,7 @@ export const useAdminStore = create<AdminStore>()(
           set((state) => ({
             orders: state.orders.map((o) =>
               o.id === id
-                ? {
+                ? normalizeOrder({
                     ...o,
                     customerName: payload.fullName ?? o.customerName,
                     phoneNumber: payload.phone ?? o.phoneNumber,
@@ -743,9 +921,17 @@ export const useAdminStore = create<AdminStore>()(
                     city: payload.city ?? o.city,
                     district: payload.district ?? o.district,
                     ward: payload.ward ?? o.ward,
+                    shippingAddress: [
+                      payload.address ?? o.addressLine,
+                      payload.ward ?? o.ward,
+                      payload.district ?? o.district,
+                      payload.city ?? o.city,
+                    ]
+                      .filter(Boolean)
+                      .join(', '),
                     notes: payload.notes ?? o.notes,
                     updatedAt: nowIso(),
-                  }
+                  })
                 : o
             ),
           }));
@@ -770,13 +956,15 @@ export const useAdminStore = create<AdminStore>()(
             throw new Error(typeof data?.error === 'string' ? data.error : 'Không thể cập nhật đơn');
           }
           const raw = data.order;
-          const mapped = mapPrismaOrderToStore({
-            ...raw,
-            createdAt:
-              typeof raw.createdAt === 'string' ? raw.createdAt : new Date(raw.createdAt).toISOString(),
-            updatedAt:
-              typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date(raw.updatedAt).toISOString(),
-          });
+          const mapped = normalizeOrder(
+            mapPrismaOrderToStore({
+              ...raw,
+              createdAt:
+                typeof raw.createdAt === 'string' ? raw.createdAt : new Date(raw.createdAt).toISOString(),
+              updatedAt:
+                typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date(raw.updatedAt).toISOString(),
+            })
+          );
           set((state) => ({
             orders: state.orders.map((o) => (o.id === id ? mapped : o)),
           }));
@@ -956,6 +1144,21 @@ export const useAdminStore = create<AdminStore>()(
     }),
     {
       name: 'electro-admin',
+      merge: (persistedState: any, currentState: any) => {
+        if (!persistedState) return currentState;
+        // Preserve persisted arrays (products, orders, users, categories)
+        // so that deletes are not overwritten by initial data
+        return {
+          ...currentState,
+          ...persistedState,
+          // Only use persisted arrays if they exist; never re-seed from INITIAL data
+          products: persistedState.products ?? currentState.products,
+          orders: (persistedState.orders ?? currentState.orders).map(normalizeOrder),
+          users: persistedState.users ?? currentState.users,
+          categories: persistedState.categories ?? currentState.categories,
+          storeConfig: persistedState.storeConfig ?? currentState.storeConfig,
+        };
+      },
     }
   )
 );
@@ -967,8 +1170,8 @@ export const useAdminStore = create<AdminStore>()(
 export function useEffectiveProducts() {
   const { products, storeConfig } = useAdminStore();
   
-  // Failsafe: if the backend DB has no products or fetch hasn't completed, fallback to INITIAL_PRODUCTS
-  const currentProducts = products.length > 0 ? products : INITIAL_PRODUCTS;
+  // Use the current products from the store (already persisted properly)
+  const currentProducts = products;
 
   const flashSaleEndStr = localStorage.getItem('electro-flash-sale-end');
   const flashSaleEnd = flashSaleEndStr ? parseInt(flashSaleEndStr, 10) : 0;

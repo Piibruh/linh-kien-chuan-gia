@@ -219,7 +219,7 @@ export function FlashSale({ products, durationHours = 6 }: FlashSaleProps) {
             {/* View More Card for horizontal scroll */}
             <div className="snap-start snap-always shrink-0 flex items-center justify-center relative z-10 pb-6 pt-2">
               <a
-                href="/products"
+                href="/category/all"
                 className="group flex flex-col items-center justify-center bg-white/10 hover:bg-white/20 w-[140px] rounded-2xl border border-white/20 transition-all cursor-pointer backdrop-blur-sm shadow-xl"
                 style={{ height: 'calc(100% - 24px)' }}
               >
@@ -238,7 +238,7 @@ export function FlashSale({ products, durationHours = 6 }: FlashSaleProps) {
             <span>🔥</span>
             <span>{display.length} sản phẩm đang giảm giá</span>
           </div>
-          <a href="/products" className="hover:text-white transition-colors cursor-pointer flex items-center gap-1">
+          <a href="/category/all" className="hover:text-white transition-colors cursor-pointer flex items-center gap-1">
             Xem tất cả <ChevronRight className="w-3 h-3" />
           </a>
         </div>

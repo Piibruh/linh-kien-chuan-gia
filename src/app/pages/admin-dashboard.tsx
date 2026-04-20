@@ -60,15 +60,17 @@ const statusColors = {
   pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   processing: 'bg-blue-100 text-blue-800 border-blue-200',
   shipping: 'bg-purple-100 text-purple-800 border-purple-200',
+  delivered: 'bg-teal-100 text-teal-800 border-teal-200',
   completed: 'bg-green-100 text-green-800 border-green-200',
   cancelled: 'bg-red-100 text-red-800 border-red-200',
 };
 
 const statusLabels = {
-  pending: 'Chờ xử lý',
+  pending: 'Chờ xác nhận',
   processing: 'Đang xử lý',
   shipping: 'Đang giao',
-  completed: 'Hoàn thành',
+  delivered: 'Đã nhận',
+  completed: 'Thành công',
   cancelled: 'Đã hủy',
 };
 
@@ -279,9 +281,7 @@ export default function AdminDashboard() {
 
   // ── Derived data ───────────────────────────────────────────────────────────
   const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
-  const formattedRevenue = totalRevenue >= 1000000
-    ? `${(totalRevenue / 1000000).toFixed(3)}Tr`
-    : `${(totalRevenue / 1000).toFixed(0)}K`;
+  const formattedRevenue = totalRevenue.toLocaleString('vi-VN') + '₫';
 
   const stats: DashboardStats[] = [
     {
@@ -885,10 +885,11 @@ export default function AdminDashboard() {
                                 onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as OrderStatus)}
                                 disabled={loadingStates[`order-${order.id}`]}
                                 className={`text-xs font-medium px-2 py-1 rounded-full border cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${statusColors[order.status]}`}>
-                                <option value="pending">Chờ xử lý</option>
+                                <option value="pending">Chờ xác nhận</option>
                                 <option value="processing">Đang xử lý</option>
                                 <option value="shipping">Đang giao</option>
-                                <option value="completed">Hoàn thành</option>
+                                <option value="delivered">Đã nhận</option>
+                                <option value="completed">Thành công</option>
                                 <option value="cancelled">Đã hủy</option>
                               </select>
                             </td>
@@ -973,7 +974,7 @@ export default function AdminDashboard() {
                           return (
                             <div key={product.id} className="flex items-center gap-4 p-3 bg-muted/30 rounded-xl border border-border/50">
                               <div className="w-16 h-16 bg-muted rounded-lg overflow-hidden flex-shrink-0">
-                                <img src={pObj?.images ? (.images ? .images[0] : (.image || '')) : (pObj?.image || 'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?w=100')} alt={product.name} className="w-full h-full object-cover" />
+                                <img src={pObj?.images?.length ? pObj.images[0] : (pObj?.image || 'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?w=100')} alt={product.name} className="w-full h-full object-cover" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="text-sm font-bold text-foreground truncate">{product.name}</div>
@@ -1143,7 +1144,7 @@ export default function AdminDashboard() {
                   {products.slice(0, 16).map((product) => (
                     <div key={product.id} className="border border-border rounded-lg p-4 hover:shadow-md transition-shadow">
                       <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden">
-                        <img src={product.images ? (.images ? .images[0] : (.image || '')) : (product.image || 'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?w=100')} alt={product.name} className="w-full h-full object-contain bg-[#f5f5f5]" />
+                        <img src={product.images?.length ? product.images[0] : (product.image || 'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?w=100')} alt={product.name} className="w-full h-full object-contain bg-[#f5f5f5]" />
                       </div>
                       <h3 className="font-medium text-foreground mb-1 line-clamp-2 min-h-[2.5rem]">{product.name}</h3>
                       <p className="text-sm text-muted-foreground mb-2">{product.category}</p>
@@ -1404,7 +1405,7 @@ export default function AdminDashboard() {
                                       <X className="w-3 h-3" />
                                     </button>
                                   </div>
-                                  <img src={(.images ? .images[0] : (.image || ''))} alt={p.name} className="w-14 h-14 rounded-lg object-cover flex-shrink-0 border border-border" />
+                                  <img src={(p.images?.length ? p.images[0] : (p.image || ''))} alt={p.name} className="w-14 h-14 rounded-lg object-cover flex-shrink-0 border border-border" />
                                   <div className="flex-1 min-w-0">
                                     <p className="text-xs font-semibold text-foreground line-clamp-2 leading-tight mb-1">{p.name}</p>
                                     <p className="text-[10px] text-muted-foreground mb-1.5">{p.category}</p>
@@ -1495,7 +1496,7 @@ export default function AdminDashboard() {
                                         <div key={p.id} className={`border rounded-xl p-3 flex gap-3 transition-all ${added ? 'border-orange-400 bg-orange-50/50 dark:bg-orange-900/10' : 'border-border bg-card hover:border-orange-300 hover:shadow-sm'
                                           }`}>
                                           <div className="relative flex-shrink-0">
-                                            <img src={(.images ? .images[0] : (.image || ''))} alt={p.name} className="w-16 h-16 rounded-lg object-cover border border-border" />
+                                            <img src={(p.images?.length ? p.images[0] : (p.image || ''))} alt={p.name} className="w-16 h-16 rounded-lg object-cover border border-border" />
                                             {added && (
                                               <div className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center">
                                                 <span className="text-white text-[10px] font-bold">✓</span>
@@ -1598,171 +1599,6 @@ export default function AdminDashboard() {
         </main>
       </div>
 
-      {/* Detail Modals */}
-      {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-8"
-          onClick={(e) => e.target === e.currentTarget && setSelectedOrder(null)}>
-          <div className="bg-card rounded-[2rem] shadow-2xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="flex items-center justify-between p-8 border-b border-border bg-muted/30">
-              <div>
-                <h2 className="text-2xl font-black text-foreground tracking-tight">Đơn hàng {selectedOrder.id}</h2>
-                <p className="text-sm text-muted-foreground mt-1 font-medium">{statusLabels[selectedOrder.status]} • {new Date(selectedOrder.createdAt).toLocaleDateString('vi-VN')}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <button onClick={handlePrintOrder} className="no-print flex items-center gap-2 px-4 py-2 bg-card border border-border hover:bg-muted text-foreground rounded-xl transition-all text-sm font-bold shadow-sm">
-                  <Printer className="h-4 w-4" /> In hóa đơn
-                </button>
-                <button onClick={() => setSelectedOrder(null)} className="no-print p-2 hover:bg-muted rounded-xl transition-colors bg-card border border-border shadow-sm">
-                  <X className="h-5 w-5 text-muted-foreground" />
-                </button>
-              </div>
-            </div>
-            <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar printable-area">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                <div className="space-y-4">
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Người dùng</h3>
-                  <div className="space-y-2">
-                    <p className="text-lg font-bold text-foreground">{selectedOrder.customerName}</p>
-                    <div className="space-y-1.5">
-                      <p className="text-sm flex items-center gap-2.5 text-muted-foreground font-medium"><Mail className="h-4 w-4 text-muted-foreground/50" /> {selectedOrder.customerEmail}</p>
-                      <p className="text-sm flex items-center gap-2.5 text-muted-foreground font-medium"><Phone className="h-4 w-4 text-muted-foreground/50" /> {selectedOrder.phoneNumber}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Giao đến</h3>
-                  <div className="space-y-2">
-                    <p className="text-sm font-bold text-foreground leading-relaxed">{selectedOrder.shippingAddress}</p>
-                    <p className="text-xs text-muted-foreground font-medium leading-relaxed italic">
-                      {[selectedOrder.addressLine, selectedOrder.ward, selectedOrder.district, selectedOrder.city].filter(Boolean).join(', ')}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Sản phẩm</h3>
-                <div className="space-y-3">
-                  {selectedOrder.products.map((product) => {
-                    const pObj = products.find(x => x.id === product.id);
-                    return (
-                      <div key={product.id} className="flex items-center gap-5 p-4 bg-muted/20 rounded-2xl border border-border/50">
-                        <div className="w-16 h-16 bg-card rounded-xl overflow-hidden shadow-sm flex-shrink-0 border border-border">
-                          <img src={(.images ? .images[0] : (.image || '')) || 'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?w=100'} alt={product.name} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-base font-bold text-foreground truncate">{product.name}</div>
-                          <div className="text-sm text-muted-foreground mt-0.5 font-medium">SL: {product.quantity} x {product.price.toLocaleString('vi-VN')}₫</div>
-                        </div>
-                        <div className="text-lg font-black text-primary">{(product.price * product.quantity).toLocaleString('vi-VN')}₫</div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pt-4 border-t border-border">
-                <div className="p-5 bg-muted/20 rounded-2xl border border-border/50">
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-3">Ghi chú</h3>
-                  <p className="text-sm text-muted-foreground italic font-medium leading-relaxed">{selectedOrder.notes || 'Không có ghi chú'}</p>
-                </div>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center text-sm font-bold text-muted-foreground">
-                    <span>Thành tiền</span>
-                    <span className="text-foreground">{selectedOrder.totalAmount.toLocaleString('vi-VN')}₫</span>
-                  </div>
-                  <div className="flex justify-between items-center pt-4 border-t border-border mt-4">
-                    <span className="text-base font-black text-foreground">TỔNG CỘNG</span>
-                    <span className="text-3xl font-black text-primary tracking-tight">{selectedOrder.totalAmount.toLocaleString('vi-VN')}₫</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-
-      {/* User Form Modal (Add / Edit) */}
-      {showAddUser && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4 py-8"
-          onClick={(e) => e.target === e.currentTarget && setShowAddUser(false)}>
-          <div className="bg-card rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="flex items-center justify-between p-6 border-b border-border">
-              <h2 className="text-xl font-bold text-foreground">
-                {userForm.id ? 'Chỉnh sửa người dùng' : 'Thêm người dùng mới'}
-              </h2>
-              <button onClick={() => setShowAddUser(false)} className="p-2 hover:bg-muted rounded-xl transition-colors">
-                <X className="h-5 w-5 text-muted-foreground" />
-              </button>
-            </div>
-            <form onSubmit={handleUserSubmit} className="p-6 space-y-4">
-              <div className="space-y-3">
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Tên hiển thị <span className="text-destructive">*</span></label>
-                  <input type="text" required value={userForm.name} onChange={e => setUserForm({ ...userForm, name: e.target.value })}
-                    className="w-full px-4 py-2 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="Nguyễn Văn A" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Email {userForm.id ? '' : <span className="text-destructive">*</span>}</label>
-                  <input type="email" required={!userForm.id} disabled={!!userForm.id} value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value })}
-                    className="w-full px-4 py-2 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
-                    placeholder="email@example.com" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Số điện thoại</label>
-                  <input type="text" value={userForm.phone} onChange={e => setUserForm({ ...userForm, phone: e.target.value })}
-                    className="w-full px-4 py-2 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="09..." />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Địa chỉ nhận hàng</label>
-                  <input type="text" value={userForm.address} onChange={e => setUserForm({ ...userForm, address: e.target.value })}
-                    className="w-full px-4 py-2 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
-                    placeholder="123 ABC..." />
-                </div>
-
-                {/* Only Admin can set role to staff/admin, Staff can only create/edit 'user' */}
-                {isAdmin && !userForm.id && (
-                  <div>
-                    <label className="text-sm font-medium text-foreground mb-1.5 block">Vai trò</label>
-                    <select value={userForm.role} onChange={e => setUserForm({ ...userForm, role: e.target.value as UserRole })}
-                      className="w-full px-4 py-2 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring">
-                      <option value="user">Người dùng</option>
-                      <option value="staff">Nhân viên</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </div>
-                )}
-
-                {/* Password only on create */}
-                {!userForm.id && (
-                  <>
-                    <div>
-                      <label className="text-sm font-medium text-foreground mb-1.5 block">Mật khẩu <span className="text-destructive">*</span></label>
-                      <input type="password" required value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })}
-                        className="w-full px-4 py-2 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring" />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-foreground mb-1.5 block">Xác nhận mật khẩu <span className="text-destructive">*</span></label>
-                      <input type="password" required value={userForm.confirmPassword} onChange={e => setUserForm({ ...userForm, confirmPassword: e.target.value })}
-                        className="w-full px-4 py-2 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring" />
-                    </div>
-                  </>
-                )}
-              </div>
-              <div className="flex gap-3 pt-4 border-t border-border mt-6">
-                <button type="submit" disabled={userLoading}
-                  className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors flex items-center justify-center gap-2">
-                  {userLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                  {userForm.id ? 'Lưu thay đổi' : 'Thêm người dùng'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </>
   );
 }
