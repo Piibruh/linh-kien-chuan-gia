@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type UserRole = 'admin' | 'staff' | 'user';
+export type UserRole = 'admin' | 'product_staff' | 'order_staff' | 'staff' | 'user';
 
 export interface User {
   id: string;
@@ -12,6 +12,66 @@ export interface User {
   address?: string;
 }
 
+/**
+ * Permission matrix — Bảng 0.21 yêu cầu:
+ *
+ * | Chức năng               | admin | product_staff | order_staff | user |
+ * |-------------------------|-------|---------------|-------------|------|
+ * | manage_accounts         |   A   |      NA       |     NA      |  NA  |
+ * | edit_own_profile        |   A   |      NA       |     NA      |   A  |
+ * | login_logout            |   A   |       A       |      A      |   A  |
+ * | view_products           |   A   |       A       |      A      |   A  |
+ * | manage_categories       |   A   |       A       |     NA      |  NA  |
+ * | manage_products         |   A   |       A       |     NA      |  NA  |
+ * | manage_cart             |  NA   |      NA       |     NA      |   A  |
+ * | place_orders            |  NA   |      NA       |     NA      |   A  |
+ * | cancel_orders           |   A   |      NA       |      A      |   A  |
+ * | manage_orders           |   A   |      NA       |      A      |  NA  |
+ * | manage_discounts        |   A   |       A       |     NA      |  NA  |
+ * | view_dashboard          |   A   |       A       |      A      |  NA  |
+ * | manage_settings         |   A   |      NA       |     NA      |  NA  |
+ */
+export type Permission =
+  | 'manage_accounts'
+  | 'edit_own_profile'
+  | 'login_logout'
+  | 'view_products'
+  | 'manage_categories'
+  | 'manage_products'
+  | 'manage_cart'
+  | 'place_orders'
+  | 'cancel_orders'
+  | 'manage_orders'
+  | 'manage_discounts'
+  | 'view_dashboard'
+  | 'manage_settings';
+
+const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
+  admin: [
+    'manage_accounts', 'edit_own_profile', 'login_logout', 'view_products',
+    'manage_categories', 'manage_products', 'cancel_orders',
+    'manage_orders', 'manage_discounts', 'view_dashboard', 'manage_settings',
+  ],
+  product_staff: [
+    'login_logout', 'view_products',
+    'manage_categories', 'manage_products',
+    'manage_discounts', 'view_dashboard',
+  ],
+  order_staff: [
+    'login_logout', 'view_products',
+    'cancel_orders', 'manage_orders', 'view_dashboard',
+  ],
+  // legacy 'staff' — treated same as order_staff for backward compat
+  staff: [
+    'login_logout', 'view_products',
+    'cancel_orders', 'manage_orders', 'view_dashboard',
+  ],
+  user: [
+    'edit_own_profile', 'login_logout', 'view_products',
+    'manage_cart', 'place_orders', 'cancel_orders',
+  ],
+};
+
 interface AuthStore {
   user: User | null;
   isLoggedIn: boolean;
@@ -20,6 +80,7 @@ interface AuthStore {
   logout: () => void;
   updateProfile: (data: Partial<User>) => void;
   hasRole: (role: UserRole | UserRole[]) => boolean;
+  can: (permission: Permission) => boolean;
 }
 
 export const useAuthStore = create<AuthStore>()(
@@ -53,7 +114,6 @@ export const useAuthStore = create<AuthStore>()(
           if (typeof data?.error === 'string') {
             return { success: false, message: data.error };
           }
-          // If response not OK and no error message, treat missing API as offline fallback.
           if (!res.ok) {
             if ([404, 502, 503, 504].includes(res.status)) {
               throw new Error('API unavailable, fallback to offline mode');
@@ -74,12 +134,21 @@ export const useAuthStore = create<AuthStore>()(
             },
             {
               id: 'u2',
-              name: 'Nhân viên Bán hàng',
-              email: 'staff@test.com',
-              password: 'staff123',
-              role: 'staff',
+              name: 'NV Quản lý Sản phẩm',
+              email: 'product@test.com',
+              password: 'product123',
+              role: 'product_staff',
               phone: '0987654321',
               address: '456 Đường XYZ, Quận 3, TP.HCM',
+            },
+            {
+              id: 'u4',
+              name: 'NV Quản lý Đơn hàng',
+              email: 'order@test.com',
+              password: 'order123',
+              role: 'order_staff',
+              phone: '0976543210',
+              address: '789 Đường ABC, Quận 5, TP.HCM',
             },
             {
               id: 'u3',
@@ -140,6 +209,13 @@ export const useAuthStore = create<AuthStore>()(
         if (!user) return false;
         if (Array.isArray(role)) return role.includes(user.role);
         return user.role === role;
+      },
+
+      can: (permission) => {
+        const { user } = get();
+        if (!user) return false;
+        const perms = ROLE_PERMISSIONS[user.role] ?? [];
+        return perms.includes(permission);
       },
     }),
     {

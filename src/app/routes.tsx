@@ -134,7 +134,7 @@ export const router = createBrowserRouter([
   {
     path: '/admin',
     element: (
-      <RequireRole roles={['admin', 'staff']}>
+      <RequireRole roles={['admin', 'staff', 'product_staff', 'order_staff']}>
         <Suspended>
           <AdminDashboard />
         </Suspended>
@@ -144,7 +144,7 @@ export const router = createBrowserRouter([
   {
     path: '/admin/products/add',
     element: (
-      <RequireRole roles={['admin']}>
+      <RequireRole roles={['admin', 'product_staff']}>
         <Suspended>
           <AddProduct />
         </Suspended>
@@ -154,7 +154,7 @@ export const router = createBrowserRouter([
   {
     path: '/admin/products/edit',
     element: (
-      <RequireRole roles={['admin']}>
+      <RequireRole roles={['admin', 'product_staff']}>
         <Suspended>
           <AddProduct />
         </Suspended>
@@ -164,7 +164,7 @@ export const router = createBrowserRouter([
   {
     path: '/admin/products',
     element: (
-      <RequireRole roles={['admin', 'staff']}>
+      <RequireRole roles={['admin', 'product_staff']}>
         <Suspended>
           <ProductsList />
         </Suspended>
@@ -174,7 +174,7 @@ export const router = createBrowserRouter([
   {
     path: '/admin/categories',
     element: (
-      <RequireRole roles={['admin']}>
+      <RequireRole roles={['admin', 'product_staff']}>
         <Suspended>
           <CategoriesList />
         </Suspended>
@@ -184,7 +184,7 @@ export const router = createBrowserRouter([
   {
     path: '/admin/categories/add',
     element: (
-      <RequireRole roles={['admin']}>
+      <RequireRole roles={['admin', 'product_staff']}>
         <Suspended>
           <AddCategory />
         </Suspended>
@@ -224,7 +224,7 @@ export const router = createBrowserRouter([
   {
     path: '/admin/orders',
     element: (
-      <RequireRole roles={['admin', 'staff']}>
+      <RequireRole roles={['admin', 'order_staff']}>
         <Suspended>
           <OrdersList />
         </Suspended>

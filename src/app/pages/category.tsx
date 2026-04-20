@@ -136,7 +136,7 @@ export default function CategoryPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Sidebar Filters */}
-        <aside className="lg:col-span-1">
+        <aside className="lg:col-span-1 sticky top-24 self-start space-y-4 max-h-[calc(100vh-7rem)] overflow-y-auto pr-2 custom-scrollbar">
           <CategoryFilters 
             onFilterChange={handleFilterChange}
             currentCategory={categoryLabel || undefined}
@@ -144,7 +144,7 @@ export default function CategoryPage() {
           />
           
           {/* Category quick links */}
-          <div className="mt-4 bg-card border border-border rounded-xl p-4">
+          <div className="bg-card border border-border rounded-xl p-4">
             <h3 className="font-medium text-foreground mb-3">Danh mục</h3>
             <div className="space-y-1">
               <Link

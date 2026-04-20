@@ -116,7 +116,7 @@ export function CategoryFilters({ onFilterChange, currentCategory, availableProd
     (inStockOnly ? 1 : 0);
 
   return (
-    <div className="sticky top-24 z-10 relative self-start max-h-[calc(100vh-7rem)] flex flex-col">
+    <div className="flex flex-col">
       <div className="bg-card border border-border rounded-xl shadow-sm flex flex-col min-h-0 w-full max-h-full overflow-hidden">
         {/* Header */}
         <div className="flex shrink-0 items-center justify-between gap-2 p-4 bg-muted/30 border-b border-border">

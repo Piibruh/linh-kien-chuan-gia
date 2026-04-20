@@ -272,6 +272,26 @@ const INITIAL_USERS: StoredUser[] = [
     createdAt: '2026-03-10T08:00:00Z',
   },
   {
+    id: 'u_p1',
+    name: 'Quản lý Sản phẩm',
+    email: 'product@test.com',
+    password: 'password123',
+    role: 'product_staff',
+    phone: '0911222333',
+    address: 'Hà Nội',
+    createdAt: '2026-04-20T10:00:00Z',
+  },
+  {
+    id: 'u_o1',
+    name: 'Quản lý Đơn hàng',
+    email: 'order@test.com',
+    password: 'password123',
+    role: 'order_staff',
+    phone: '0944555666',
+    address: 'TP.HCM',
+    createdAt: '2026-04-20T11:00:00Z',
+  },
+  {
     id: 'u3',
     name: 'Nguyễn Văn A',
     email: 'user@test.com',
@@ -1169,27 +1189,42 @@ export const useAdminStore = create<AdminStore>()(
  */
 export function useEffectiveProducts() {
   const { products, storeConfig } = useAdminStore();
-  
-  // Use the current products from the store (already persisted properly)
   const currentProducts = products;
 
   const flashSaleEndStr = localStorage.getItem('electro-flash-sale-end');
   const flashSaleEnd = flashSaleEndStr ? parseInt(flashSaleEndStr, 10) : 0;
   const isFsActive = !isNaN(flashSaleEnd) && flashSaleEnd > Date.now();
 
-  if (!isFsActive || !storeConfig.flashSaleItems || storeConfig.flashSaleItems.length === 0) {
-    return currentProducts;
-  }
+  // If Flash Sale is not active, return original products
+  if (!isFsActive) return currentProducts;
+
+  const manualPrices = new Map<string, number>(
+    (storeConfig.flashSaleItems || []).map(i => [i.productId, i.flashSalePrice])
+  );
+  
+  const threshold = storeConfig.flashSaleThreshold ?? 0.2;
 
   return currentProducts.map(p => {
-    const manualConfig = storeConfig.flashSaleItems.find(item => item.productId === p.id);
-    if (manualConfig && manualConfig.flashSalePrice < p.price) {
-      return {
-        ...p,
-        oldPrice: p.price,
-        price: manualConfig.flashSalePrice
-      };
+    // Priority 1: Manual Admin Setting
+    if (manualPrices.has(p.id)) {
+      const fsPrice = manualPrices.get(p.id)!;
+      if (fsPrice < p.price) {
+        return {
+          ...p,
+          oldPrice: p.price,
+          price: fsPrice
+        };
+      }
     }
+
+    // Priority 2: Auto-threshold (if product already has a significant discount)
+    if (p.oldPrice && p.oldPrice > p.price) {
+      const pct = (p.oldPrice - p.price) / p.oldPrice;
+      if (pct >= threshold) {
+        return p; 
+      }
+    }
+
     return p;
   });
 }

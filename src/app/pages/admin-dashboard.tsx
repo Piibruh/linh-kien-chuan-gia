@@ -28,6 +28,7 @@ import {
   MapPin,
   Printer,
   Zap,
+  Flame,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useAuthStore, UserRole } from '../../store/authStore';
@@ -46,14 +47,15 @@ interface DashboardStats {
 
 type SidebarItem = { id: string; label: string; icon: React.ElementType };
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-const sidebarItems: SidebarItem[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'products', label: 'Sản phẩm', icon: Package },
-  { id: 'categories', label: 'Danh mục', icon: FolderTree },
-  { id: 'orders', label: 'Đơn hàng', icon: ShoppingCart },
-  { id: 'customers', label: 'Người dùng', icon: Users },
-  { id: 'settings', label: 'Cài đặt', icon: Settings },
+// ─── Sidebar items with required permissions ─────────────────────────────────
+const sidebarItems: (SidebarItem & { permission?: string })[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: 'view_dashboard' },
+  { id: 'products', label: 'Sản phẩm', icon: Package, permission: 'manage_products' },
+  { id: 'discounts', label: 'Giảm giá', icon: Zap, permission: 'manage_discounts' },
+  { id: 'categories', label: 'Danh mục', icon: FolderTree, permission: 'manage_categories' },
+  { id: 'orders', label: 'Đơn hàng', icon: ShoppingCart, permission: 'manage_orders' },
+  { id: 'customers', label: 'Người dùng', icon: Users, permission: 'manage_accounts' },
+  { id: 'settings', label: 'Cài đặt', icon: Settings, permission: 'manage_settings' },
 ];
 
 const statusColors = {
@@ -92,6 +94,15 @@ const INITIAL_CATEGORY_FORM = { name: '' };
 
 const INITIAL_USER_FORM = {
   id: '', name: '', email: '', phone: '', address: '', password: '', confirmPassword: '', role: 'user' as UserRole,
+};
+
+// ─── Role Labels ──────────────────────────────────────────────────────────────
+const ROLE_LABELS: Record<string, { label: string; color: string }> = {
+  admin:         { label: 'Quản trị viên', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' },
+  product_staff: { label: 'NV Quản lý SP', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+  order_staff:   { label: 'NV Quản lý Đơn', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
+  staff:         { label: 'Nhân viên', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
+  user:          { label: 'Khách hàng', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -254,7 +265,8 @@ export default function AdminDashboard() {
     );
   }
 
-  if (user.role !== 'admin' && user.role !== 'staff') {
+  const staffRoles: UserRole[] = ['admin', 'product_staff', 'order_staff', 'staff'];
+  if (!staffRoles.includes(user.role)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -269,15 +281,24 @@ export default function AdminDashboard() {
     );
   }
 
+  // ── Permission helpers ─────────────────────────────────────────────────────
   const isAdmin = user.role === 'admin';
+  const can = useAuthStore.getState().can;
 
-  // Prevent staff from opening highly restricted sections via URL
+  // Sidebar items visible to this user
+  const visibleSidebarItems = sidebarItems.filter(item =>
+    !item.permission || can(item.permission as any)
+  );
+
+  // Redirect to first allowed section if current section is not permitted
   useEffect(() => {
-    if (!isAdmin && ['categories', 'settings'].includes(activeSection)) {
-      setSection('dashboard');
+    const currentItem = sidebarItems.find(i => i.id === activeSection);
+    if (currentItem?.permission && !can(currentItem.permission as any)) {
+      const first = visibleSidebarItems[0];
+      if (first) setSection(first.id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin, activeSection]);
+  }, [user.role, activeSection]);
 
   // ── Derived data ───────────────────────────────────────────────────────────
   const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
@@ -307,14 +328,12 @@ export default function AdminDashboard() {
       u.email.toLowerCase().includes(searchQuery.toLowerCase());
 
     // RBAC: Staff only sees customers ('user' role)
-    if (!isAdmin && u.role !== 'user') return false;
+    if (!can('manage_accounts') && u.role !== 'user') return false;
 
     return matchesSearch;
   });
 
-  const visibleSidebarItems = isAdmin
-    ? sidebarItems
-    : sidebarItems.filter((i) => !['categories', 'settings'].includes(i.id));
+
 
   // ── Order handlers ─────────────────────────────────────────────────────────
   const handleLogout = () => { logout(); toast.success('Đã đăng xuất thành công'); navigate('/'); };
@@ -679,7 +698,9 @@ export default function AdminDashboard() {
                     onChange={(e) => setUserForm((p) => ({ ...p, role: e.target.value as UserRole }))}
                     className="w-full px-4 py-2.5 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring">
                     <option value="user">👤 Khách hàng</option>
-                    <option value="staff">🧑‍💼 Nhân viên</option>
+                    <option value="product_staff">📦 NV Quản lý Sản phẩm</option>
+                    <option value="order_staff">📝 NV Quản lý Đơn</option>
+                    <option value="staff">🧑‍💼 Nhân viên (Chung)</option>
                     <option value="admin">👑 Admin</option>
                   </select>
                 </div>
@@ -730,8 +751,8 @@ export default function AdminDashboard() {
             {!sidebarCollapsed && (
               <div>
                 <span className="font-bold text-xl text-primary">Admin Panel</span>
-                <div className={`text-xs mt-0.5 ${isAdmin ? 'text-destructive' : 'text-primary'}`}>
-                  {isAdmin ? '👑 Admin' : '🧑‍💼 Nhân viên'}
+                <div className={`text-xs mt-0.5 font-semibold px-2 py-0.5 rounded-full inline-block ${ROLE_LABELS[user.role]?.color ?? 'text-muted-foreground'}`}>
+                  {ROLE_LABELS[user.role]?.label ?? user.role}
                 </div>
               </div>
             )}
@@ -763,6 +784,9 @@ export default function AdminDashboard() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
                   <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full mt-0.5 inline-block ${ROLE_LABELS[user.role]?.color ?? 'bg-muted text-muted-foreground'}`}>
+                    {ROLE_LABELS[user.role]?.label ?? user.role}
+                  </span>
                 </div>
               )}
             </div>
@@ -797,7 +821,7 @@ export default function AdminDashboard() {
               <button className="p-2 hover:bg-muted rounded-lg transition-colors">
                 <Search className="h-5 w-5 text-muted-foreground" />
               </button>
-              {isAdmin && (
+              {can('manage_settings') && (
                 <button className="p-2 hover:bg-muted rounded-lg transition-colors">
                   <Settings className="h-5 w-5 text-muted-foreground" />
                 </button>
@@ -901,7 +925,7 @@ export default function AdminDashboard() {
                                 </button>
                                 {isAdmin && (
                                   <button onClick={() => handleDeleteOrder(order.id)} disabled={loadingStates[`delete-order-${order.id}`]}
-                                    className="p-2 hover:bg-destructive/10 rounded-lg transition-colors disabled:opacity-50" title="Xóa">
+                                    className="p-2 hover:bg-destructive/10 rounded-lg transition-colors disabled:opacity-50" title="Xóa (Admin only)">
                                     {loadingStates[`delete-order-${order.id}`]
                                       ? <Loader2 className="h-4 w-4 text-destructive animate-spin" />
                                       : <Trash2 className="h-4 w-4 text-destructive" />}
@@ -1113,7 +1137,7 @@ export default function AdminDashboard() {
                     </div>
 
                     <div className="flex gap-3 pt-4 border-t border-border mt-6">
-                      {(isAdmin || (user?.role === 'staff' && selectedUser.role === 'user')) && (
+                      {can('manage_accounts') && (
                         <button onClick={() => {
                           setUserForm({ ...INITIAL_USER_FORM, id: selectedUser.id, name: selectedUser.name, email: selectedUser.email, phone: selectedUser.phone || '', address: selectedUser.address || '', role: selectedUser.role as UserRole });
                           setShowAddUser(true);
@@ -1133,7 +1157,7 @@ export default function AdminDashboard() {
                   <h2 className="text-xl font-bold text-foreground">
                     Quản lý sản phẩm <span className="text-sm font-normal text-muted-foreground">({products.length} sản phẩm)</span>
                   </h2>
-                  {isAdmin && (
+                  {can('manage_products') && (
                     <button onClick={() => navigate('/admin/products/add')}
                       className="bg-primary text-primary-foreground px-4 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors text-sm flex items-center gap-2">
                       <Plus className="h-4 w-4" /> Thêm sản phẩm
@@ -1151,12 +1175,12 @@ export default function AdminDashboard() {
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-primary">{product.price.toLocaleString('vi-VN')}₫</span>
                         <div className="flex gap-1">
-                          {isAdmin && (
+                          {can('manage_products') && (
                             <button onClick={() => navigate(`/admin/products/edit?id=${product.id}`)} className="p-1.5 hover:bg-muted rounded transition-colors" title="Sửa">
                               <Edit className="h-4 w-4 text-muted-foreground" />
                             </button>
                           )}
-                          {isAdmin && (
+                          {can('manage_products') && (
                             <button onClick={() => handleDeleteProduct(product.id, product.name)} disabled={loadingStates[`delete-product-${product.id}`]}
                               className="p-1.5 hover:bg-destructive/10 rounded transition-colors disabled:opacity-50" title="Xóa">
                               {loadingStates[`delete-product-${product.id}`]
@@ -1190,7 +1214,7 @@ export default function AdminDashboard() {
                   <h2 className="text-xl font-bold text-foreground">
                     Danh mục sản phẩm <span className="text-sm font-normal text-muted-foreground">({categories.length} danh mục)</span>
                   </h2>
-                  {isAdmin && (
+                  {can('manage_categories') && (
                     <div className="flex gap-2">
                       <button onClick={() => navigate('/admin/categories')}
                         className="border border-border px-4 py-2 rounded-lg font-medium hover:bg-muted transition-colors text-sm">
@@ -1218,7 +1242,7 @@ export default function AdminDashboard() {
                             </p>
                           </div>
                         </div>
-                        {isAdmin && (
+                        {can('manage_categories') && (
                           <div className="flex gap-1">
                             <button onClick={() => navigate('/admin/categories')} className="p-2 hover:bg-muted rounded-lg transition-colors">
                               <Edit className="h-4 w-4 text-muted-foreground" />
@@ -1244,7 +1268,7 @@ export default function AdminDashboard() {
                       Quản lý người dùng <span className="text-sm font-normal text-muted-foreground">({users.length} tài khoản)</span>
                     </h2>
                     <div className="flex gap-2">
-                      {isAdmin && (
+                      {can('manage_accounts') && (
                         <button onClick={() => navigate('/admin/users')}
                           className="border border-border px-4 py-2 rounded-lg font-medium hover:bg-muted transition-colors text-sm">
                           Xem tất cả
@@ -1281,17 +1305,16 @@ export default function AdminDashboard() {
                           <td className="px-6 py-4"><span className="text-sm text-muted-foreground">{userItem.email}</span></td>
                           <td className="px-6 py-4"><span className="text-sm text-muted-foreground">{userItem.phone || 'N/A'}</span></td>
                           <td className="px-6 py-4">
-                            {isAdmin ? (
+                            {can('manage_accounts') ? (
                               <select value={userItem.role}
                                 onChange={(e) => handleUpdateUserRole(userItem.id, e.target.value as UserRole)}
                                 disabled={loadingStates[`user-${userItem.id}`] || userItem.id === user.id}
-                                className={`text-xs font-medium px-2 py-1 rounded-full border cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${userItem.role === 'admin' ? 'bg-red-100 text-red-800 border-red-200' :
-                                    userItem.role === 'staff' ? 'bg-blue-100 text-blue-800 border-blue-200' :
-                                      'bg-gray-100 text-gray-800 border-gray-200'
-                                  }`}>
+                                className={`text-xs font-medium px-2 py-1 rounded-full border cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${ROLE_LABELS[userItem.role]?.color ?? 'bg-gray-100 text-gray-800 border-gray-200'}`}>
                                 <option value="admin">👑 Admin</option>
-                                <option value="staff">🧑‍💼 Nhân viên</option>
-                                <option value="user">👤 Người dùng</option>
+                                <option value="product_staff">📦 NV Quản lý Sản phẩm</option>
+                                <option value="order_staff">📝 NV Quản lý Đơn</option>
+                                <option value="staff">🧑‍💼 Nhân viên (Chung)</option>
+                                <option value="user">👤 Khách hàng</option>
                               </select>
                             ) : (
                               <span className={`text-xs font-medium px-2 py-1 rounded-full border ${userItem.role === 'admin' ? 'bg-red-100 text-red-800 border-red-200' :
@@ -1307,7 +1330,7 @@ export default function AdminDashboard() {
                               <button onClick={() => setSelectedUser(userItem)} className="p-2 hover:bg-muted rounded-lg transition-colors" title="Xem & Chỉnh sửa">
                                 <Eye className="h-4 w-4 text-muted-foreground" />
                               </button>
-                              {isAdmin && userItem.id !== user.id && (
+                              {can('manage_accounts') && userItem.id !== user.id && (
                                 <button onClick={() => handleDeleteUser(userItem.id, userItem.name)} disabled={loadingStates[`delete-user-${userItem.id}`]}
                                   className="p-2 hover:bg-destructive/10 rounded-lg transition-colors disabled:opacity-50" title="Xóa">
                                   {loadingStates[`delete-user-${userItem.id}`]
@@ -1325,10 +1348,13 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {/* Settings Section */}
-            {activeSection === 'settings' && isAdmin && (
+            {/* Discounts Section */}
+            {activeSection === 'discounts' && can('manage_discounts') && (
               <div className="bg-card border border-border rounded-xl p-6">
-                <h2 className="text-xl font-bold text-foreground mb-6">Cài đặt hệ thống (Tính năng admin)</h2>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-foreground">Quản lý giảm giá & Flash Sale</h2>
+                </div>
+
                 <div className="space-y-6">
                   <div className="border border-border rounded-lg p-6 bg-muted/30">
                     <h3 className="font-bold text-lg text-foreground mb-4 flex items-center gap-2">
@@ -1577,6 +1603,82 @@ export default function AdminDashboard() {
                         </button>
                       </div>
                     </form>
+                  </div>
+
+                  {/* Active Flash Sale Preview */}
+                  <div className="border border-border rounded-lg p-6 bg-card">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-bold text-lg text-foreground flex items-center gap-2">
+                        <Flame className="h-5 w-5 text-orange-500" /> Sản phẩm đang hiển thị Flash Sale
+                      </h3>
+                      <span className="text-xs text-muted-foreground italic">Dựa trên cấu hình hiện tại</span>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {(() => {
+                        const threshold = configForm.flashSaleThreshold;
+                        const manualIds = new Set(configForm.flashSaleItems.map(i => i.productId));
+                        const activeItems = products.filter(p => {
+                          if (manualIds.has(p.id)) return true;
+                          if (p.oldPrice && p.oldPrice > p.price) {
+                            return (p.oldPrice - p.price) / p.oldPrice >= threshold;
+                          }
+                          return false;
+                        }).slice(0, 10);
+
+                        if (activeItems.length === 0) {
+                          return <p className="text-sm text-muted-foreground text-center py-4 italic">Không có sản phẩm nào đủ điều kiện Flash Sale hiện tại.</p>;
+                        }
+
+                        return (
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {activeItems.map(p => {
+                              const isManual = manualIds.has(p.id);
+                              const mItem = configForm.flashSaleItems.find(i => i.productId === p.id);
+                              const displayPrice = isManual ? mItem!.flashSalePrice : p.price;
+                              const oldP = isManual ? p.price : (p.oldPrice || p.price);
+                              const pct = Math.round(((oldP - displayPrice) / oldP) * 100);
+
+                              return (
+                                <div key={p.id} className="flex items-center gap-3 p-3 bg-muted/20 rounded-xl border border-border/50">
+                                  <img src={p.images?.length ? p.images[0] : (p.image || '')} alt={p.name} className="w-12 h-12 rounded-lg object-cover" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-foreground truncate">{p.name}</p>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-bold text-primary">{displayPrice.toLocaleString('vi-VN')}₫</span>
+                                      <span className="text-[10px] bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full font-bold">-{pct}%</span>
+                                      {isManual && <span className="text-[10px] bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded-full font-bold uppercase">Thủ công</span>}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {products.filter(p => {
+                              if (manualIds.has(p.id)) return true;
+                              if (p.oldPrice && p.oldPrice > p.price) {
+                                return (p.oldPrice - p.price) / p.oldPrice >= threshold;
+                              }
+                              return false;
+                            }).length > 10 && (
+                              <p className="text-xs text-muted-foreground text-center col-span-full pt-2">... và nhiều sản phẩm khác</p>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Settings Section */}
+            {activeSection === 'settings' && can('manage_settings') && (
+              <div className="bg-card border border-border rounded-xl p-6">
+                <h2 className="text-xl font-bold text-foreground mb-6">Cài đặt hệ thống (Tính năng admin)</h2>
+                <div className="space-y-6">
+                  <div className="border border-border rounded-lg p-6 bg-muted/30">
+                    <h3 className="font-bold text-lg text-foreground mb-4">Cấu hình cửa hàng</h3>
+                    <p className="text-sm text-muted-foreground mb-4">Quản lý các thiết lập chung của hệ thống.</p>
                   </div>
 
                   {/* Keep the mockup ones as hints of future feature */}
