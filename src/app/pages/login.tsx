@@ -238,7 +238,7 @@ export default function LoginPage() {
         navigate(next, { replace: true });
         return;
       }
-      const isStaff = user.role === 'admin' || user.role === 'product_staff' || user.role === 'order_staff' || user.role === 'user_manager';
+      const isStaff = user.role === 'admin' || user.role === 'product_staff' || user.role === 'order_staff';
       if (isStaff) {
         navigate('/admin', { replace: true });
       } else {
@@ -269,6 +269,35 @@ export default function LoginPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleQuickLogin = async (email: string, pw: string) => {
+    setIsLoading(true);
+    setFormData({ email, password: pw });
+    setErrors({});
+    
+    // Slight delay for visual feedback
+    await new Promise(r => setTimeout(r, 400));
+    
+    const result = await login(email, pw);
+    setIsLoading(false);
+    
+    if (result.success) {
+      toast.success(result.message);
+      const { user } = useAuthStore.getState();
+      const isStaff = user?.role === 'admin' || user?.role === 'product_staff' || user?.role === 'order_staff';
+      
+      if (next && next.startsWith('/')) {
+        navigate(next);
+      } else if (isStaff) {
+        navigate('/admin');
+      } else {
+        navigate('/');
+      }
+    } else {
+      setErrors({ general: result.message });
+      toast.error(result.message);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -289,7 +318,7 @@ export default function LoginPage() {
         return;
       }
 
-      const isStaff = user?.role === 'admin' || user?.role === 'product_staff' || user?.role === 'order_staff' || user?.role === 'user_manager';
+      const isStaff = user?.role === 'admin' || user?.role === 'product_staff' || user?.role === 'order_staff';
       if (isStaff) {
         navigate('/admin');
       } else {
@@ -343,17 +372,14 @@ export default function LoginPage() {
                   { label: 'Quản trị (Admin)', email: 'admin@test.com', pw: 'password123', cls: 'bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20' },
                   { label: 'NV Sản phẩm', email: 'product@test.com', pw: 'product123', cls: 'bg-orange-500/10 text-orange-600 border border-orange-500/20 hover:bg-orange-500/20' },
                   { label: 'NV Đơn hàng', email: 'order@test.com', pw: 'order123', cls: 'bg-blue-500/10 text-blue-600 border border-blue-500/20 hover:bg-blue-500/20' },
-                  { label: 'NV Người dùng', email: 'user_manager@test.com', pw: 'user123', cls: 'bg-purple-500/10 text-purple-600 border border-purple-500/20 hover:bg-purple-500/20' },
-                  { label: 'Khách hàng', email: 'user@test.com', pw: 'user123', cls: 'bg-muted text-muted-foreground border border-border hover:bg-muted/60 col-span-2' },
+                  { label: 'Khách hàng', email: 'user@test.com', pw: 'user123', cls: 'bg-muted text-muted-foreground border border-border hover:bg-muted/60' },
                 ].map((acc) => (
                   <button
                     key={acc.email}
                     type="button"
-                    onClick={() => {
-                      setFormData({ email: acc.email, password: acc.pw });
-                      setErrors((prev) => ({ ...prev, email: '', password: '', general: '' }));
-                    }}
-                    className={`py-2 px-1 rounded-lg text-[10px] font-bold transition-all active:scale-95 ${acc.cls}`}
+                    disabled={isLoading}
+                    onClick={() => handleQuickLogin(acc.email, acc.pw)}
+                    className={`py-2 px-1 rounded-lg text-[10px] font-bold transition-all active:scale-95 disabled:opacity-50 ${acc.cls}`}
                   >
                     {acc.label}
                   </button>

@@ -290,16 +290,6 @@ const INITIAL_USERS: StoredUser[] = [
     createdAt: '2026-04-20T11:00:00Z',
   },
   {
-    id: 'u_u1',
-    name: 'NV Quản lý Người dùng',
-    email: 'user_manager@test.com',
-    password: 'user123',
-    role: 'user_manager',
-    phone: '0955666777',
-    address: 'Hà Nội',
-    createdAt: '2026-04-20T12:00:00Z',
-  },
-  {
     id: 'u3',
     name: 'Nguyễn Văn A',
     email: 'user@test.com',

@@ -46,7 +46,7 @@ Tài liệu này tổng hợp 50 câu hỏi quan trọng nhất bao quát toàn 
 *   **Trả lời**: Dùng thư viện **bcryptjs** để băm (Hash) mật khẩu trước khi lưu. Ngay cả Admin cũng không thể xem được mật khẩu gốc của người dùng.
 
 ### 14. Trường `trangThai` đơn hàng có những giá trị nào?
-*   **Trả lời**: `Cho_Xu_Ly`, `Dang_Giao`, `Thanh_Cong`, `Da_Huy`. Giúp quản lý luồng vận hành của cửa hàng. Vai trò được chia thành: `admin`, `product_staff`, `order_staff`, `user_manager`.
+*   **Trả lời**: `Cho_Xu_Ly`, `Dang_Giao`, `Thanh_Cong`, `Da_Huy`. Giúp quản lý luồng vận hành của cửa hàng. Vai trò được chia thành: `admin`, `product_staff`, `order_staff`.
 
 ### 15. Làm thế nào để tìm kiếm sản phẩm nhanh khi dữ liệu lớn?
 *   **Trả lời**: Đánh **Index** (chỉ mục) cho các trường hay dùng để tìm kiếm như `tenSanPham`, `thuongHieu`.
@@ -86,7 +86,7 @@ Tài liệu này tổng hợp 50 câu hỏi quan trọng nhất bao quát toàn 
 *   **Trả lời**: Khi có thay đổi (thêm sản phẩm, sửa đơn), Store sẽ gọi API cập nhật Database, sau đó cập nhật lại State nội bộ của Zustand để React tự động vẽ lại (re-render) màn hình.
 
 ### 26. Giải thích hàm `can(permission)` trong `authStore.ts`?
-*   **Trả lời**: Đây là hàm kiểm tra quyền hạn. Nó so khớp Role của người dùng hiện tại (admin, product_staff, order_staff, user_manager) với danh sách quyền (permissions) để cho phép hoặc chặn truy cập.
+*   **Trả lời**: Đây là hàm kiểm tra quyền hạn. Nó so khớp Role của người dùng hiện tại (admin, product_staff, order_staff) với danh sách quyền (permissions) để cho phép hoặc chặn truy cập.
 
 ### 27. Bạn xử lý Logic Flash Sale như thế nào?
 *   **Trả lời**: Store lưu danh sách ID sản phẩm đang Flash Sale. Khi hiển thị, hệ thống sẽ kiểm tra: nếu ID nằm trong danh sách và còn thời gian, nó sẽ tự động tính toán lại `giaBan` dựa trên % giảm giá.

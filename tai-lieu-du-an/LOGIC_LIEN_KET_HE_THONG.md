@@ -62,7 +62,7 @@ Dự án có sự liên kết chặt chẽ giữa 3 Store chính:
 
 1.  **AuthStore ↔ AdminStore**:
     - `AdminStore` luôn kiểm tra `token` từ `AuthStore` trước khi gọi bất kỳ API nào.
-    - `AdminStore` sử dụng thông tin `user.role` (admin, product_staff, order_staff, user_manager) để ẩn/hiện các tính năng quản trị.
+    - `AdminStore` sử dụng thông tin `user.role` (admin, product_staff, order_staff) để ẩn/hiện các tính năng quản trị.
 
 2.  **ProductStore ↔ AdminStore**:
     - Khi Admin thêm sản phẩm mới (`addProduct`), `ProductStore` sẽ nhận được thông báo (qua cơ chế re-fetch) để cập nhật lại danh sách sản phẩm cho khách hàng thấy.

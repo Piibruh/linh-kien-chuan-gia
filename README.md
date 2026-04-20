@@ -28,8 +28,8 @@ Dự án được xây dựng với mục tiêu giải quyết bài toán quản
 Hệ thống phân quyền chuyên sâu (Role-Based Access Control) giúp chuyên môn hóa đội ngũ:
 - **👑 Admin**: Giám sát doanh thu, quản lý nhân sự và cấu hình hệ thống.
 - **📦 Quản lý Sản phẩm**: Điều chỉnh kho hàng, cập nhật thông số kỹ thuật và giá bán.
-- **📝 Quản lý Đơn hàng**: Xử lý vận đơn, xác nhận thu tiền và điều phối giao hàng.
-- **👥 Quản lý Người dùng**: Chăm sóc khách hàng, quản lý phản hồi và tài khoản.
+- **📝 NV Quản lý Đơn hàng**: Chuyên trách tiếp nhận đơn, xác nhận thông tin khách và vận chuyển.
+- **👤 Khách hàng**: Xem sản phẩm, mua sắm và theo dõi hành trình đơn hàng của mình.
 
 ---
 
@@ -77,7 +77,6 @@ Dành cho nhà phát triển và khách hàng muốn kiểm tra các chức năn
 | **Admin** | `admin@test.com` | `password123` | Toàn quyền hệ thống |
 | **NV Sản phẩm** | `product@test.com` | `product123` | Quản lý kho & giá |
 | **NV Đơn hàng** | `order@test.com` | `order123` | Xử lý vận chuyển |
-| **NV Người dùng** | `user_manager@test.com` | `user123` | Quản lý khách hàng |
 | **Khách hàng** | `user@test.com` | `user123` | Mua sắm & Theo dõi |
 
 ---

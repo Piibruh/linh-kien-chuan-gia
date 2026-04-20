@@ -5,7 +5,7 @@ export interface User {
   maNguoiDung: string;
   hoTen: string;
   email: string;
-  role: 'admin' | 'user' | 'product_staff' | 'order_staff' | 'user_manager';
+  role: 'admin' | 'user' | 'product_staff' | 'order_staff';
   dienThoai?: string;
   diaChi?: string;
 }
@@ -24,7 +24,6 @@ const ROLES_PERMISSIONS: Record<string, string[]> = {
   admin: ['all'],
   product_staff: ['view_dashboard', 'manage_products', 'view_orders'],
   order_staff: ['view_dashboard', 'manage_orders', 'view_products'],
-  user_manager: ['view_dashboard', 'manage_users', 'view_orders', 'view_products'],
   user: ['view_profile', 'place_orders'],
 };
 
@@ -90,14 +89,6 @@ export const useAuthStore = create<AuthStore>()(
               dienThoai: '0976543210',
               diaChi: '789 Đường ABC, Quận 5, TP.HCM',
             },
-            {
-              maNguoiDung: 'u5',
-              hoTen: 'NV Quản lý Người dùng',
-              email: 'user_manager@test.com',
-              password: 'user123',
-              role: 'user_manager',
-              dienThoai: '0955666777',
-              diaChi: 'Hà Nội',
             },
             {
               maNguoiDung: 'u3',
