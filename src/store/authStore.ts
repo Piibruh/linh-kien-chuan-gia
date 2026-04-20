@@ -89,7 +89,6 @@ export const useAuthStore = create<AuthStore>()(
               dienThoai: '0976543210',
               diaChi: '789 Đường ABC, Quận 5, TP.HCM',
             },
-            },
             {
               maNguoiDung: 'u3',
               hoTen: 'Nguyễn Văn A',
