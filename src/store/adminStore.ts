@@ -441,7 +441,20 @@ export const useAdminStore = create<AdminStore>()(
             paymentStatus: getDefaultPaymentStatus(payload.paymentMethod ?? 'cod'),
           };
           const normalized = normalizeOrder(newOrder);
-          set((state) => ({ orders: [normalized, ...state.orders] }));
+          set((state) => {
+            // Update local products stock for demo mode
+            const updatedProducts = state.products.map((p) => {
+              const itemInOrder = payload.chiTiet.find((line) => line.maSanPham === p.maSanPham);
+              if (itemInOrder) {
+                return { ...p, soLuongTon: Math.max(0, p.soLuongTon - itemInOrder.soLuong) };
+              }
+              return p;
+            });
+            return {
+              orders: [normalized, ...state.orders],
+              products: updatedProducts,
+            };
+          });
           return normalized;
         };
 

@@ -635,13 +635,11 @@ app.post('/api/orders', authRequired, async (req, res) => {
       // Update stock
       for (const item of body.items) {
         const maSanPham = item.maSanPham || item.productId;
-        const sp = await tx.sanPham.findUnique({ where: { maSanPham } });
-        if (sp) {
-          await tx.sanPham.update({
-            where: { maSanPham },
-            data: { soLuongTon: Math.max(0, sp.soLuongTon - item.quantity) },
-          });
-        }
+        const qty = Math.max(1, Number(item.quantity) || 0);
+        await tx.sanPham.update({
+          where: { maSanPham },
+          data: { soLuongTon: { decrement: qty } },
+        });
       }
       return dh;
     });
