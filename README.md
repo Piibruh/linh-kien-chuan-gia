@@ -54,7 +54,7 @@ Hệ thống được thiết kế theo mô hình tách biệt đảm bảo tín
 1. **Lớp Giao diện (UI Layer)**: Xây dựng bằng React Components và Tailwind.
 2. **Lớp Store (State Management)**: Zustand xử lý logic giỏ hàng và xác thực.
 3. **Lớp API (Server Layer)**: Express xử lý logic nghiệp vụ và bảo mật.
-4. **Lớp Dữ liệu (Persistence Layer)**: Prisma tương tác với SQLite thông qua mô hình quan hệ 12 bảng.
+4. **Lớp Dữ liệu (Persistence Layer)**: Prisma tương tác với SQLite thông qua mô hình quan hệ 13 bảng phân rã chi tiết.
 
 ---
 
@@ -79,7 +79,7 @@ Hệ thống được thiết kế theo mô hình tách biệt đảm bảo tín
 
 Để tìm hiểu sâu hơn về mã nguồn, vui lòng tham khảo các tài liệu trong thư mục `tai-lieu-du-an/`:
 - [📖 Kiến trúc Hệ thống](file:///d:/Web%20test%20t3/linh-kien-chuan-gia-main/tai-lieu-du-an/KIEU_TRUC_HE_THONG.md): Chi tiết về các lớp và luồng xử lý.
-- [📊 Sơ đồ Database](file:///d:/Web%20test%20t3/linh-kien-chuan-gia-main/tai-lieu-du-an/DATABASE_SCHEMA.md): Chi tiết 12 bảng và mối quan hệ ERD.
+- [📊 Sơ đồ Database](file:///d:/Web%20test%20t3/linh-kien-chuan-gia-main/tai-lieu-du-an/DATABASE_SCHEMA.md): Chi tiết 13 bảng và mối quan hệ ERD (NguoiDung, DonHang, GioHang, SanPham, DanhGia...).
 - [💻 Hướng dẫn Lập trình](file:///d:/Web%20test%20t3/linh-kien-chuan-gia-main/tai-lieu-du-an/HUONG_DAN_CODE.md): Quy chuẩn viết code và mở rộng tính năng.
 
 ---

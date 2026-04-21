@@ -398,9 +398,11 @@ export default function AdminDashboard() {
   );
 
   const filteredUsers = users.filter((u) => {
+    const userSearchName = u.hoTen || u.name || '';
+    const userSearchEmail = u.email || '';
     const matchesSearch =
-      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.toLowerCase());
+      userSearchName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      userSearchEmail.toLowerCase().includes(searchQuery.toLowerCase());
 
     // RBAC: Staff only sees customers ('user' role)
     if (!can('manage_accounts') && u.role !== 'user') return false;

@@ -1,6 +1,6 @@
 # Chi Tiết Cơ Sở Dữ Liệu - Linh Kiện Chuẩn Giá
 
-Dự án sử dụng cơ sở dữ liệu quan hệ được chuẩn hóa thành 12 bảng để đảm bảo tính toàn vẹn dữ liệu và khả năng mở rộng.
+Dự án sử dụng cơ sở dữ liệu quan hệ được chuẩn hóa thành 13 bảng để đảm bảo tính toàn vẹn dữ liệu và khả năng mở rộng.
 
 ## 1. Sơ đồ Quan hệ (ERD)
 
@@ -8,11 +8,15 @@ Dự án sử dụng cơ sở dữ liệu quan hệ được chuẩn hóa thành
 erDiagram
     TaiKhoan ||--o| NguoiDung : "1-1"
     NguoiDung ||--o{ DonHang : "1-n"
-    NguoiDung ||--o{ GioHang : "1-1"
+    NguoiDung ||--o| GioHang : "1-1"
+    GioHang ||--o{ ChiTietGioHang : "1-n"
     DanhMuc ||--o{ SanPham : "1-n"
     SanPham ||--o{ HinhAnh : "1-n"
     SanPham ||--o{ ThongSo : "1-n"
     SanPham ||--o{ ChiTietDonHang : "1-n"
+    SanPham ||--o{ ChiTietGioHang : "1-n"
+    SanPham ||--o{ DanhGia : "1-n"
+    NguoiDung ||--o{ DanhGia : "1-n"
     DonHang ||--o{ ChiTietDonHang : "1-n"
     DonHang ||--o{ ThanhToan : "1-n"
     DonHang ||--o{ VanChuyen : "1-n"
@@ -38,9 +42,10 @@ erDiagram
 9. **ThanhToan**: Phương thức (COD/Online) và trạng thái thanh toán.
 10. **VanChuyen**: Đối tác vận chuyển và phí vận chuyển.
 
-### 2.4. Nhóm Tương tác
-11. **GioHang**: Giỏ hàng tạm thời của khách hàng.
-12. **DanhGia**: Phản hồi và điểm số sao cho từng sản phẩm.
+### 2.4. Nhóm Tương tác & Giỏ hàng
+11. **GioHang**: Giỏ hàng chính của người dùng dựa nguyên lý mỗi user có 1 giỏ.
+12. **ChiTietGioHang**: Lưu thông tin sản phẩm và số lượng có trong giỏ hàng.
+13. **DanhGia**: Phản hồi và điểm số sao cho từng sản phẩm.
 
 ---
 

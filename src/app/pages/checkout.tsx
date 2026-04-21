@@ -121,15 +121,15 @@ export default function CheckoutPage() {
 
   const validateForm = () => {
     const newErrors: Partial<FormData> = {};
-    if (!formData.fullName.trim()) newErrors.fullName = 'Vui lòng nhập họ tên';
-    if (!formData.phone.trim()) newErrors.phone = 'Vui lòng nhập số điện thoại';
+    if (!(formData.fullName || '').trim()) newErrors.fullName = 'Vui lòng nhập họ tên';
+    if (!(formData.phone || '').trim()) newErrors.phone = 'Vui lòng nhập số điện thoại';
     else if (!/^[0-9]{10}$/.test(formData.phone)) newErrors.phone = 'Số điện thoại không hợp lệ';
-    if (!formData.email.trim()) newErrors.email = 'Vui lòng nhập email';
+    if (!(formData.email || '').trim()) newErrors.email = 'Vui lòng nhập email';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Email không hợp lệ';
-    if (!formData.address.trim()) newErrors.address = 'Vui lòng nhập địa chỉ';
-    if (!formData.city.trim()) newErrors.city = 'Vui lòng chọn tỉnh/thành';
-    if (!formData.district.trim()) newErrors.district = 'Vui lòng chọn quận/huyện';
-    if (!formData.ward.trim()) newErrors.ward = 'Vui lòng chọn phường/xã';
+    if (!(formData.address || '').trim()) newErrors.address = 'Vui lòng nhập địa chỉ';
+    if (!(formData.city || '').trim()) newErrors.city = 'Vui lòng chọn tỉnh/thành';
+    if (!(formData.district || '').trim()) newErrors.district = 'Vui lòng chọn quận/huyện';
+    if (!(formData.ward || '').trim()) newErrors.ward = 'Vui lòng chọn phường/xã';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -163,10 +163,10 @@ export default function CheckoutPage() {
       }
 
       const fullAddress = [
-        formData.address.trim(),
-        formData.ward.trim(),
-        formData.district.trim(),
-        formData.city.trim(),
+        (formData.address || '').trim(),
+        (formData.ward || '').trim(),
+        (formData.district || '').trim(),
+        (formData.city || '').trim(),
       ]
         .filter(Boolean)
         .join(', ');
@@ -176,15 +176,15 @@ export default function CheckoutPage() {
 
       await createOrder({
         maNguoiDung: user.maNguoiDung,
-        tenNguoiNhan: formData.fullName.trim(),
-        emailNguoiNhan: formData.email.trim(),
-        sdtNhan: formData.phone.trim(),
+        tenNguoiNhan: (formData.fullName || '').trim(),
+        emailNguoiNhan: (formData.email || '').trim(),
+        sdtNhan: (formData.phone || '').trim(),
         diaChiGiao: fullAddress,
-        addressLine: formData.address.trim(),
-        city: formData.city.trim(),
-        district: formData.district.trim(),
-        ward: formData.ward.trim(),
-        notes: formData.notes.trim(),
+        addressLine: (formData.address || '').trim(),
+        city: (formData.city || '').trim(),
+        district: (formData.district || '').trim(),
+        ward: (formData.ward || '').trim(),
+        notes: (formData.notes || '').trim(),
         paymentMethod,
         shippingMethod,
         coupon: '',
