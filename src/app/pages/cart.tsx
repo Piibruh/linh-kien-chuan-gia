@@ -7,8 +7,9 @@ export default function CartPage() {
   const { items, updateQuantity, removeItem } = useCartStore();
   const subtotal = useCartStore((s) => s.items.reduce((sum, i) => sum + i.price * i.quantity, 0));
 
-  const shippingFee = subtotal >= 500000 ? 0 : 30000;
+  const shippingFee = 0; // Phí ship tính theo chính sách mới
   const total = subtotal + shippingFee;
+  const isMinOrderReached = subtotal >= 50000;
 
   const handleRemove = (id: string, name: string) => {
     removeItem(id);
@@ -174,19 +175,21 @@ export default function CartPage() {
                 </div>
                 <div className="flex items-center justify-between text-foreground">
                   <span>Phí vận chuyển:</span>
-                  <span className="font-medium">
-                    {shippingFee === 0 ? (
-                      <span className="text-green-600">Miễn phí</span>
-                    ) : (
-                      `${shippingFee.toLocaleString('vi-VN')}₫`
-                    )}
-                  </span>
+                  <span className="font-medium text-green-600">Miễn phí/Tính sau</span>
                 </div>
-                {shippingFee > 0 && (
-                  <div className="text-xs text-muted-foreground bg-muted p-3 rounded-lg">
-                    Mua thêm {(500000 - subtotal).toLocaleString('vi-VN')}₫ để được miễn phí vận chuyển
+                
+                {!isMinOrderReached && (
+                  <div className="text-xs text-destructive bg-destructive/10 p-3 rounded-lg border border-destructive/20 font-medium">
+                    ⚠️ Đơn hàng tối thiểu từ { (50000).toLocaleString('vi-VN') }₫. Bạn cần mua thêm { (50000 - subtotal).toLocaleString('vi-VN') }₫ để thanh toán.
                   </div>
                 )}
+                
+                {isMinOrderReached && (
+                  <div className="text-xs text-muted-foreground bg-muted p-3 rounded-lg">
+                    Chính sách: Miễn phí nội thành HN khi thanh toán COD. Chuyển khoản freeship toàn quốc.
+                  </div>
+                )}
+
                 <div className="border-t border-border pt-4">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-foreground">Tổng cộng:</span>
@@ -198,8 +201,18 @@ export default function CartPage() {
               </div>
 
               <Link
-                to="/checkout"
-                className="block w-full bg-primary text-primary-foreground text-center px-6 py-4 rounded-lg font-bold hover:bg-primary/90 transition-all active:scale-95"
+                to={isMinOrderReached ? "/checkout" : "#"}
+                onClick={(e) => {
+                  if (!isMinOrderReached) {
+                    e.preventDefault();
+                    toast.error(`Đơn hàng tối thiểu từ 50.000₫`);
+                  }
+                }}
+                className={`block w-full text-center px-6 py-4 rounded-lg font-bold transition-all active:scale-95 ${
+                  isMinOrderReached 
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                    : 'bg-muted text-muted-foreground cursor-not-allowed opacity-70'
+                }`}
               >
                 Tiến hành thanh toán
               </Link>

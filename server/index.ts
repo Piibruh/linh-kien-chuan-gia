@@ -4,6 +4,9 @@ import cors from 'cors';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
+import path from 'path';
+import fs from 'fs';
+import multer from 'multer';
 
 const prisma = new PrismaClient();
 const app = express();
@@ -17,6 +20,46 @@ app.use(
   })
 );
 app.use(express.json());
+app.use('/uploads', express.static(path.join(process.cwd(), 'public/uploads')));
+
+// Ensure upload directory exists
+const uploadDir = path.join(process.cwd(), 'public/uploads/products');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Multer config
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+});
+
+// Upload endpoint
+app.post('/api/upload', authRequired, requireRole('admin', 'staff'), upload.array('files'), (req, res) => {
+  try {
+    const files = req.files as Express.Multer.File[];
+    if (!files || files.length === 0) {
+      res.status(400).json({ error: 'No files uploaded' });
+      return;
+    }
+
+    const urls = files.map(file => `/uploads/products/${file.filename}`);
+    res.json({ urls });
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({ error: 'Failed to upload files' });
+  }
+});
 
 type JwtPayload = { sub: string; role: string; email: string };
 
@@ -132,18 +175,15 @@ async function autoCompleteDeliveredOrders() {
 function mapOrder(dh: any) {
   const payment = getPrimaryPayment(dh);
   return {
-    id: dh.maDonHang,
-    customerId: dh.maNguoiDung,
-    fullName: dh.tenNguoiNhan,
-    phone: dh.sdtNhan,
-    email: dh.nguoiDung?.email ?? '',
-    address: dh.diaChiGiao ?? '',
-    city: '',
-    district: '',
-    ward: '',
-    total: dh.tongTien,
-    status: mapStatus(dh.trangThai),
-    createdAt: dh.ngayDat?.toISOString?.() ?? new Date().toISOString(),
+    maDonHang: dh.maDonHang,
+    maNguoiDung: dh.maNguoiDung,
+    tenNguoiNhan: dh.tenNguoiNhan,
+    sdtNhan: dh.sdtNhan,
+    emailNguoiNhan: dh.nguoiDung?.email ?? '',
+    diaChiGiao: dh.diaChiGiao ?? '',
+    tongTien: dh.tongTien,
+    trangThai: dh.trangThai,
+    ngayDat: dh.ngayDat?.toISOString?.() ?? new Date().toISOString(),
     updatedAt: dh.updatedAt?.toISOString?.() ?? dh.ngayDat?.toISOString?.() ?? new Date().toISOString(),
     paymentMethod: payment?.phuongThuc === 'online' ? 'online' : 'cod',
     paymentStatus: getPaymentStatus(dh),
@@ -156,11 +196,11 @@ function mapOrder(dh: any) {
     completedAt: dh.completedAt?.toISOString?.() ?? null,
     cancelledAt: dh.cancelledAt?.toISOString?.() ?? null,
     codCollectedAt: dh.codCollectedAt?.toISOString?.() ?? null,
-    items: (dh.chiTiet ?? []).map((ct: any) => ({
-      productId: ct.maSanPham,
-      name: ct.sanPham?.tenSanPham ?? 'Sản phẩm',
-      price: ct.donGia,
-      quantity: ct.soLuong,
+    chiTiet: (dh.chiTiet ?? []).map((ct: any) => ({
+      maSanPham: ct.maSanPham,
+      tenSanPham: ct.sanPham?.tenSanPham ?? 'Sản phẩm',
+      donGia: ct.donGia,
+      soLuong: ct.soLuong,
     })),
   };
 }
@@ -175,17 +215,50 @@ function mapStatusToDb(uiStatus: string): string {
 
 // Map Prisma product to frontend shape
 function mapProduct(sp: any) {
+  // Calculate average rating
+  const ratings = sp.danhGias || [];
+  const avgRating = ratings.length > 0 
+    ? ratings.reduce((sum: number, dg: any) => sum + dg.diem, 0) / ratings.length 
+    : 0;
+
+  // Map thongSos to specs object
+  const specs: Record<string, string> = {};
+  if (sp.thongSos) {
+    sp.thongSos.forEach((ts: any) => {
+      specs[ts.tenThongSo] = ts.giaTri;
+    });
+  }
+
   return {
-    id: sp.maSanPham,
+    maSanPham: sp.maSanPham,
+    id: sp.maSanPham, // For frontend compatibility
     slug: sp.maSanPham,
-    name: sp.tenSanPham,
-    category: sp.danhMuc?.tenDanhMuc || 'Unknown',
-    brand: sp.thuongHieu,
-    price: sp.giaBan,
-    stock: sp.soLuongTon,
-    description: sp.moTaKT,
-    specs: {},
-    images: sp.hinhAnhs?.map((h: any) => h.url) || [],
+    tenSanPham: sp.tenSanPham,
+    maDanhMuc: sp.danhMuc?.tenDanhMuc || 'Khác',
+    thuongHieu: sp.thuongHieu,
+    giaBan: sp.giaBan,
+    soLuongTon: sp.soLuongTon,
+    moTaKT: sp.moTaKT,
+    rating: parseFloat(avgRating.toFixed(1)),
+    reviews: ratings.length,
+    imagesDetail: sp.hinhAnhs?.map((h: any) => ({
+      url: h.url,
+      thuTu: h.thuTu || 0,
+      laAnhChinh: h.laAnhChinh || false
+    })).sort((a: any, b: any) => a.thuTu - b.thuTu) || [],
+    images: sp.hinhAnhs?.sort((a: any, b: any) => a.thuTu - b.thuTu).map((h: any) => h.url) || [],
+    specs: specs,
+    status: sp.trangThai || 'published',
+    visibility: sp.hienThi || 'public',
+    usageGuide: sp.huongDan || '',
+    seoTitle: sp.seoTitle || '',
+    seoDescription: sp.seoDescription || '',
+    seoKeywords: sp.seoKeywords || '',
+    tags: sp.tags ? sp.tags.split(',') : [],
+    publishDate: sp.ngayXuatBan,
+    views: sp.luotXem || 0,
+    editCount: sp.soLanSua || 0,
+    lastEditedBy: sp.nguoiSuaCuoi || '',
   };
 }
 
@@ -199,6 +272,19 @@ function mapUser(nd: any) {
     phone: nd.dienThoai ?? null,
     address: nd.diaChi ?? null,
     createdAt: nd.taiKhoan?.ngayTao?.toISOString?.() ?? new Date().toISOString(),
+  };
+}
+
+// Map Prisma review to frontend shape
+function mapReview(dg: any) {
+  return {
+    id: dg.maDanhGia,
+    productId: dg.maSanPham,
+    userId: dg.maNguoiDung,
+    userName: dg.nguoiDung?.hoTen || 'Người dùng',
+    rating: dg.diem,
+    comment: dg.binhLuan,
+    createdAt: dg.ngayTao?.toISOString?.() || new Date().toISOString(),
   };
 }
 
@@ -319,24 +405,16 @@ app.put('/api/auth/password', authRequired, async (req, res) => {
 // ─── Products ────────────────────────────────────────────────────────────────
 
 app.get('/api/products', async (req, res) => {
-  const { search } = req.query;
-  const where: any = {};
-  if (search && typeof search === 'string') {
-    where.OR = [{ tenSanPham: { contains: search } }, { thuongHieu: { contains: search } }];
-  }
-
-  const items = await prisma.sanPham.findMany({
-    where,
-    include: { hinhAnhs: true, danhMuc: true },
+  const products = await prisma.sanPham.findMany({
+    include: { hinhAnhs: true, danhMuc: true, danhGias: true, thongSos: true },
   });
-
-  res.json({ items: items.map(mapProduct), total: items.length });
+  res.json({ products: products.map(mapProduct) });
 });
 
 app.get('/api/products/:id', async (req, res) => {
   const sp = await prisma.sanPham.findUnique({
     where: { maSanPham: req.params.id },
-    include: { hinhAnhs: true, danhMuc: true },
+    include: { hinhAnhs: true, danhMuc: true, danhGias: true, thongSos: true },
   });
   if (!sp) return res.status(404).json({ error: 'Not found' });
   res.json({ product: mapProduct(sp) });
@@ -344,7 +422,11 @@ app.get('/api/products/:id', async (req, res) => {
 
 app.post('/api/products', authRequired, requireRole('admin', 'staff'), async (req, res) => {
   try {
-    const { name, category, brand, price, stock, description, images } = req.body;
+    const { 
+      name, category, brand, price, stock, description, images, specs,
+      status, visibility, usageGuide, seoTitle, seoDescription, seoKeywords, tags,
+      lastEditedBy
+    } = req.body;
 
     // Find or create category
     let danhMuc = await prisma.danhMuc.findFirst({ where: { tenDanhMuc: category } });
@@ -360,11 +442,34 @@ app.post('/api/products', authRequired, requireRole('admin', 'staff'), async (re
         giaBan: Number(price),
         soLuongTon: Number(stock ?? 0),
         moTaKT: description ?? '',
+        huongDan: usageGuide ?? '',
+        trangThai: status || 'published',
+        hienThi: visibility || 'public',
+        seoTitle: seoTitle || '',
+        seoDescription: seoDescription || '',
+        seoKeywords: seoKeywords || '',
+        tags: Array.isArray(tags) ? tags.join(',') : (tags || ''),
+        nguoiSuaCuoi: lastEditedBy || '',
         hinhAnhs: images && images.length > 0 ? {
-          create: images.map((url: string) => ({ url }))
+          create: images.map((img: any, idx: number) => {
+            if (typeof img === 'string') {
+              return { url: img, thuTu: idx, laAnhChinh: idx === 0 };
+            }
+            return {
+              url: img.url,
+              thuTu: img.thuTu ?? idx,
+              laAnhChinh: img.laAnhChinh ?? (idx === 0)
+            };
+          })
+        } : undefined,
+        thongSos: specs && typeof specs === 'object' ? {
+          create: Object.entries(specs).map(([key, val]) => ({
+            tenThongSo: key,
+            giaTri: String(val)
+          }))
         } : undefined,
       },
-      include: { hinhAnhs: true, danhMuc: true },
+      include: { hinhAnhs: true, danhMuc: true, danhGias: true, thongSos: true },
     });
 
     res.status(201).json({ product: mapProduct(sp) });
@@ -373,15 +478,28 @@ app.post('/api/products', authRequired, requireRole('admin', 'staff'), async (re
   }
 });
 
-app.patch('/api/products/:id', authRequired, requireRole('admin', 'staff'), async (req, res) => {
+app.patch('/api/products/:id', authRequired, requireRole('admin', 'staff', 'product_staff'), async (req, res) => {
   try {
-    const { name, brand, price, stock, description, category, images } = req.body;
+    const { 
+      name, brand, price, stock, description, category, images, specs,
+      status, visibility, usageGuide, seoTitle, seoDescription, seoKeywords, tags,
+      lastEditedBy, editCount
+    } = req.body;
     const data: any = {};
     if (name !== undefined) data.tenSanPham = name;
     if (brand !== undefined) data.thuongHieu = brand;
     if (price !== undefined) data.giaBan = Number(price);
     if (stock !== undefined) data.soLuongTon = Number(stock);
     if (description !== undefined) data.moTaKT = description;
+    if (usageGuide !== undefined) data.huongDan = usageGuide;
+    if (status !== undefined) data.trangThai = status;
+    if (visibility !== undefined) data.hienThi = visibility;
+    if (seoTitle !== undefined) data.seoTitle = seoTitle;
+    if (seoDescription !== undefined) data.seoDescription = seoDescription;
+    if (seoKeywords !== undefined) data.seoKeywords = seoKeywords;
+    if (tags !== undefined) data.tags = Array.isArray(tags) ? tags.join(',') : tags;
+    if (lastEditedBy !== undefined) data.nguoiSuaCuoi = lastEditedBy;
+    if (editCount !== undefined) data.soLanSua = Number(editCount);
     if (category !== undefined) {
       let danhMuc = await prisma.danhMuc.findFirst({ where: { tenDanhMuc: category } });
       if (!danhMuc) danhMuc = await prisma.danhMuc.create({ data: { tenDanhMuc: category } });
@@ -393,14 +511,35 @@ app.patch('/api/products/:id', authRequired, requireRole('admin', 'staff'), asyn
         where: { maSanPham: req.params.id }
       });
       data.hinhAnhs = {
-        create: images.map((url: string) => ({ url }))
+        create: images.map((img: any, idx: number) => {
+          if (typeof img === 'string') {
+            return { url: img, thuTu: idx, laAnhChinh: idx === 0 };
+          }
+          return {
+            url: img.url,
+            thuTu: img.thuTu ?? idx,
+            laAnhChinh: img.laAnhChinh ?? (idx === 0)
+          };
+        })
+      };
+    }
+
+    if (specs && typeof specs === 'object') {
+      await prisma.thongSo.deleteMany({
+        where: { maSanPham: req.params.id }
+      });
+      data.thongSos = {
+        create: Object.entries(specs).map(([key, val]) => ({
+          tenThongSo: key,
+          giaTri: String(val)
+        }))
       };
     }
 
     const sp = await prisma.sanPham.update({
       where: { maSanPham: req.params.id },
       data,
-      include: { hinhAnhs: true, danhMuc: true },
+      include: { hinhAnhs: true, danhMuc: true, danhGias: true, thongSos: true },
     });
     res.json({ product: mapProduct(sp) });
   } catch (e: any) {
@@ -408,7 +547,7 @@ app.patch('/api/products/:id', authRequired, requireRole('admin', 'staff'), asyn
   }
 });
 
-app.delete('/api/products/:id', authRequired, requireRole('admin'), async (req, res) => {
+app.delete('/api/products/:id', authRequired, requireRole('admin', 'staff'), async (req, res) => {
   try {
     await prisma.sanPham.delete({ where: { maSanPham: req.params.id } });
     res.json({ success: true });
@@ -439,6 +578,12 @@ app.post('/api/orders', authRequired, async (req, res) => {
   const body = req.body;
   const paymentMethod = body.paymentMethod === 'online' ? 'online' : 'cod';
   const fullAddress = combineAddress(body.address, body.ward, body.district, body.city);
+ 
+  // Minimum order validation (50,000 VND)
+  const subtotal = body.items.reduce((sum: number, i: any) => sum + (Number(i.price) * Number(i.quantity)), 0);
+  if (subtotal < 50000) {
+    return res.status(400).json({ error: 'Đơn hàng tối thiểu phải từ 50.000₫' });
+  }
 
   try {
     const order = await prisma.$transaction(async (tx) => {
@@ -750,7 +895,7 @@ app.patch('/api/orders/:id/customer', authRequired, async (req, res) => {
   }
 });
 
-app.delete('/api/orders/:id', authRequired, requireRole('admin'), async (req, res) => {
+app.delete('/api/orders/:id', authRequired, requireRole('admin', 'staff'), async (req, res) => {
   try {
     await prisma.donHang.delete({ where: { maDonHang: req.params.id } });
     res.json({ success: true });
@@ -862,6 +1007,56 @@ app.delete('/api/users/:id', authRequired, requireRole('admin'), async (req, res
     res.json({ success: true });
   } catch (e: any) {
     res.status(400).json({ error: e.message || 'Không thể xóa người dùng' });
+  }
+});
+
+// ─── Reviews ─────────────────────────────────────────────────────────────────
+
+app.get('/api/reviews', async (req, res) => {
+  const { productId } = req.query;
+  const where: any = {};
+  if (productId) where.maSanPham = String(productId);
+
+  const reviews = await prisma.danhGia.findMany({
+    where,
+    include: { nguoiDung: true },
+    orderBy: { ngayTao: 'desc' },
+  });
+
+  res.json({ reviews: reviews.map(mapReview) });
+});
+
+app.post('/api/reviews', authRequired, async (req, res) => {
+  const u = getUser(req);
+  const { productId, rating, comment } = req.body;
+
+  if (!productId || !rating || !comment) {
+    res.status(400).json({ error: 'Thiếu thông tin đánh giá' });
+    return;
+  }
+
+  try {
+    const dg = await prisma.danhGia.create({
+      data: {
+        maSanPham: productId,
+        maNguoiDung: u.sub,
+        diem: Number(rating),
+        binhLuan: String(comment).trim(),
+      },
+      include: { nguoiDung: true },
+    });
+    res.status(201).json({ review: mapReview(dg) });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message || 'Không thể gửi đánh giá' });
+  }
+});
+
+app.delete('/api/reviews/:id', authRequired, requireRole('admin', 'staff'), async (req, res) => {
+  try {
+    await prisma.danhGia.delete({ where: { maDanhGia: req.params.id } });
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(400).json({ error: e.message || 'Không thể xóa đánh giá' });
   }
 });
 

@@ -20,7 +20,10 @@ Dự án được xây dựng với mục tiêu giải quyết bài toán quản
 ### 🛒 Dành Cho Khách Hàng
 - **Giao diện hiện đại**: Thiết kế Responsive, hỗ trợ Dark Mode, tối ưu trải nghiệm trên di động.
 - **Tìm kiếm thông minh**: Lọc sản phẩm theo danh mục, thương hiệu và mức giá.
-- **Giỏ hàng & Thanh toán**: Quy trình đặt hàng tối giản, hỗ trợ nhiều phương thức vận chuyển và thanh toán (COD/Online).
+- **Giỏ hàng & Thanh toán**: Quy trình đặt hàng tối giản. Áp dụng mức đơn tối thiểu **50.000₫**.
+- **Chính sách Vận chuyển**: 
+    - Miễn phí nội thành HN khi thanh toán khi nhận hàng (COD).
+    - Miễn phí giao hàng toàn quốc cho tất cả đơn hàng Chuyển khoản (Prepaid).
 - **Theo dõi đơn hàng**: Cập nhật trạng thái đơn hàng theo thời gian thực (Chờ xử lý, Đang giao, Thành công).
 - **Flash Sale**: Hệ thống tự động cập nhật giá ưu đãi theo cấu hình của quản trị viên.
 

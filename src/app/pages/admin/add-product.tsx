@@ -17,7 +17,8 @@ import { TagsBox } from '../../components/admin/TagsBox';
 export default function AddProduct() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const productId = searchParams.get('id');
+  // Support both 'id' and 'maSanPham' query parameters
+  const productId = searchParams.get('maSanPham') || searchParams.get('id');
   const isEditMode = Boolean(productId);
 
   const { products, categories, addProduct, updateProduct, addCategory } = useAdminStore();
@@ -61,38 +62,83 @@ export default function AddProduct() {
 
   // Load product data if editing
   useEffect(() => {
+    // If we're in edit mode but have no products, we should probably fetch them
+    // However, the dashboard usually fetches them first. 
+    // If products is empty, it might be due to a direct URL visit.
     if (isEditMode && productId) {
-      const product = products.find((p) => p.id === productId);
+      const product = products.find((p) => p.maSanPham === productId || (p as any).id === productId);
       if (product) {
-        setProductName(product.name);
+        setProductName(product.name || product.tenSanPham || '');
         setSlug(product.slug || '');
-        setBrand(product.brand || '');
-        setCategory(product.category);
-        setPrice(product.price.toString());
+        setBrand(product.brand || product.thuongHieu || '');
+        setCategory(product.category || product.maDanhMuc || '');
+        setPrice(product.price?.toString() || product.giaBan?.toString() || '0');
         setOldPrice(product.oldPrice?.toString() || '');
-        setStock(product.stock.toString());
-        setDescription(product.description || '');
-        setStatus('published');
-        if (product.publishDate) setPublishDate(product.publishDate);
-        setEditCount(product.editCount || 0);
-        setLastEditedBy(product.lastEditedBy || '');
-        setViews(product.views || 0);
-        setSeoTitle((product as any).seoTitle || '');
-        setSeoDescription((product as any).seoDescription || '');
-        setSeoKeywords((product as any).seoKeywords || '');
-        setTags((product as any).tags || []);
+        setStock(product.stock?.toString() || product.soLuongTon?.toString() || '0');
+        setDescription(product.description || product.moTaKT || '');
+        setUsageGuide(product.usageGuide || product.huongDan || '');
+        setStatus(product.status || product.trangThai || 'published');
+        setVisibility(product.visibility || product.hienThi || 'public');
+        if (product.publishDate || product.ngayXuatBan) setPublishDate(product.publishDate || product.ngayXuatBan);
+        setEditCount(product.editCount || product.soLanSua || 0);
+        setLastEditedBy(product.lastEditedBy || product.nguoiSuaCuoi || '');
+        setViews(product.views || product.luotXem || 0);
+        setSeoTitle(product.seoTitle || '');
+        setSeoDescription(product.seoDescription || '');
+        setSeoKeywords(product.seoKeywords || '');
+        setTags(Array.isArray(product.tags) ? product.tags : []);
         
-        // Load images
-        const productImages: ImageFile[] = (product.images || []).map((url, index) => ({
-          id: `img_${index}`,
-          url,
-          name: `image_${index}.jpg`,
-          size: 0,
-        }));
-        setImages(productImages);
-        if (productImages.length > 0) {
-          setFeaturedImageId(productImages[0].id);
+        // Load specifications
+        if (product.specs && typeof product.specs === 'object') {
+          const specsArr: Specification[] = Object.entries(product.specs).map(([key, val]) => ({
+            id: `spec_${Date.now()}_${Math.random()}`,
+            key,
+            value: String(val)
+          }));
+          setSpecifications(specsArr);
+        } else if ((product as any).specifications) {
+           const specsArr: Specification[] = Object.entries((product as any).specifications).map(([key, val]) => ({
+            id: `spec_${Date.now()}_${Math.random()}`,
+            key,
+            value: String(val)
+          }));
+          setSpecifications(specsArr);
         }
+
+        // Load images
+        if (product.imagesDetail && Array.isArray(product.imagesDetail) && product.imagesDetail.length > 0) {
+          const sortedImgsDetails = [...product.imagesDetail].sort((a, b) => a.thuTu - b.thuTu);
+          const productImages: ImageFile[] = sortedImgsDetails.map((imgDetail, index) => ({
+            id: `img_${index}`,
+            url: imgDetail.url,
+            name: `image_${index}.jpg`,
+            size: 0,
+          }));
+          setImages(productImages);
+          
+          const featured = sortedImgsDetails.findIndex(img => img.laAnhChinh);
+          if (featured !== -1) {
+            setFeaturedImageId(`img_${featured}`);
+          } else if (productImages.length > 0) {
+            setFeaturedImageId(`img_0`);
+          }
+        } else {
+          // Fallback for old data structure
+          const productImages: ImageFile[] = (product.images || []).map((url, index) => ({
+            id: `img_${index}`,
+            url,
+            name: `image_${index}.jpg`,
+            size: 0,
+          }));
+          setImages(productImages);
+          if (productImages.length > 0) {
+            setFeaturedImageId(`img_0`);
+          }
+        }
+      } else {
+         // If we didn't find the product and we have products loaded, maybe it doesn't exist
+         // But if products list is empty, we need to wait for bootstrap.
+         // In a real app, we'd fetch the single product by ID here.
       }
     }
   }, [isEditMode, productId, products]);
@@ -185,16 +231,14 @@ export default function AddProduct() {
       return;
     }
 
-    setStatus('published');
     setIsPublishing(true);
     try {
-      // Get featured image URL and reorder so featured is first
-      const featuredImage = images.find((img) => img.id === featuredImageId);
-      // Put featured image first, then the rest in original order
-      const orderedImages = featuredImage
-        ? [featuredImage, ...images.filter((img) => img.id !== featuredImageId)]
-        : images;
-      const imageUrls = orderedImages.map((img) => img.url);
+      // Map images to the structured format for the Backend
+      const imagesWithMetadata = images.map((img, index) => ({
+        url: img.url,
+        thuTu: index,
+        laAnhChinh: img.id === featuredImageId || (featuredImageId === '' && index === 0)
+      }));
 
       // Prepare specifications object
       const specsObject: Record<string, string> = {};
@@ -215,15 +259,18 @@ export default function AddProduct() {
         oldPrice: oldPrice ? parseFloat(oldPrice) : undefined,
         stock: parseInt(stock),
         description: description.trim(),
-        images: imageUrls,
+        usageGuide: usageGuide.trim(),
+        images: imagesWithMetadata,
         specs: Object.keys(specsObject).length > 0 ? specsObject : {},
         specifications: Object.keys(specsObject).length > 0 ? specsObject : undefined,
+        status,
+        visibility,
+        seoTitle: seoTitle.trim(),
+        seoDescription: seoDescription.trim(),
+        seoKeywords: seoKeywords.trim(),
+        tags: tags,
         lastEditedBy: user?.name || user?.email || 'Unknown',
         editCount: isEditMode ? editCount + 1 : 0,
-        seoTitle: seoTitle.trim() || undefined,
-        seoDescription: seoDescription.trim() || undefined,
-        seoKeywords: seoKeywords.trim() || undefined,
-        tags: tags.length > 0 ? tags : undefined,
       };
 
       let productData: any = baseProductData;

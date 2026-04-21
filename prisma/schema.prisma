@@ -31,6 +31,7 @@ model NguoiDung {
 
   gioHangs GioHang[]
   donHangs DonHang[]
+  danhGias DanhGia[]
 }
 
 // 3. Bảng Danh mục
@@ -53,18 +54,42 @@ model SanPham {
   soLuongTon Int
   baoHanh    String?
   moTaKT     String?
+  huongDan   String?
+  trangThai  String  @default("published")
+  hienThi    String  @default("public")
+  seoTitle   String?
+  seoDescription String?
+  seoKeywords    String?
+  tags       String?
+  ngayXuatBan DateTime @default(now())
+  luotXem    Int @default(0)
+  soLanSua   Int @default(0)
+  nguoiSuaCuoi String?
 
   hinhAnhs   HinhAnh[]
+  thongSos   ThongSo[]
   ctGioHangs ChiTietGioHang[]
   ctDonHangs ChiTietDonHang[]
+  danhGias   DanhGia[]
 }
 
-// 5. Bảng Hình ảnh
+// 5. Bảng Thông số kỹ thuật
+model ThongSo {
+  maThongSo  String  @id @default(uuid())
+  maSanPham  String
+  sanPham    SanPham @relation(fields: [maSanPham], references: [maSanPham], onDelete: Cascade)
+  tenThongSo String
+  giaTri     String
+}
+
+// 6. Bảng Hình ảnh
 model HinhAnh {
-  maHinh    String  @id @default(uuid())
-  maSanPham String
-  sanPham   SanPham @relation(fields: [maSanPham], references: [maSanPham], onDelete: Cascade)
-  url       String
+  maHinh     String  @id @default(uuid())
+  maSanPham  String
+  sanPham    SanPham @relation(fields: [maSanPham], references: [maSanPham], onDelete: Cascade)
+  url        String
+  thuTu      Int     @default(0)
+  laAnhChinh Boolean @default(false)
 }
 
 // 6. Bảng Giỏ hàng
@@ -143,4 +168,16 @@ model VanChuyen {
   donVi        String
   phiVanChuyen Float
   trangThai    String
+}
+
+// 12. Bảng Đánh giá
+model DanhGia {
+  maDanhGia   String    @id @default(uuid())
+  maSanPham   String
+  sanPham     SanPham   @relation(fields: [maSanPham], references: [maSanPham], onDelete: Cascade)
+  maNguoiDung String
+  nguoiDung   NguoiDung @relation(fields: [maNguoiDung], references: [maNguoiDung], onDelete: Cascade)
+  diem        Int
+  binhLuan    String
+  ngayTao     DateTime  @default(now())
 }

@@ -61,7 +61,7 @@ export default function HomePage() {
         salePrice = Math.round(p.price * (1 - pct));
       } else {
         // Tự động tạo discount ngẫu nhiên 5-20% dựa trên id (deterministic)
-        const hash = p.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+        const hash = (p.id || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
         pct = MIN_DISCOUNT + (hash % 16) / 100; // 5% → 20%
         salePrice = Math.round(p.price * (1 - pct));
       }

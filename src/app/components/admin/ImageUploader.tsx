@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Upload, X, Star, Link, ImageIcon, AlertCircle } from 'lucide-react';
+import { Upload, X, Star, Link, ImageIcon, AlertCircle, Loader2 } from 'lucide-react';
 import { Metabox } from './Metabox';
 
 export interface ImageFile {
@@ -34,6 +34,7 @@ export function ImageUploader({
   const [urlInput, setUrlInput] = useState('');
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [urlError, setUrlError] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load images from localStorage on mount (only for new product, not edit mode)
@@ -116,7 +117,45 @@ export function ImageUploader({
       });
     }));
 
-    onImagesChange([...images, ...newImages]);
+    // Upload to server
+    setIsUploading(true);
+    const token = localStorage.getItem('auth_token');
+    const uploadedImages: ImageFile[] = [];
+
+    for (const img of newImages) {
+      try {
+        // Convert dataURL to Blob
+        const res = await fetch(img.url);
+        const blob = await res.blob();
+        
+        const formData = new FormData();
+        formData.append('files', blob, img.name);
+
+        const uploadRes = await fetch('http://localhost:4000/api/upload', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        if (!uploadRes.ok) throw new Error('Upload failed');
+        
+        const data = await uploadRes.json();
+        if (data.urls && data.urls.length > 0) {
+          uploadedImages.push({
+            ...img,
+            url: `http://localhost:4000${data.urls[0]}` // Use full URL for persistence
+          });
+        }
+      } catch (error) {
+        console.error('Failed to upload image:', error);
+        setUrlError('Không thể tải ảnh lên máy chủ');
+      }
+    }
+
+    setIsUploading(false);
+    onImagesChange([...images, ...uploadedImages]);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -222,15 +261,24 @@ export function ImageUploader({
             isDragging
               ? 'border-[#2271b1] bg-blue-50'
               : 'border-[#c3c4c7] hover:border-[#2271b1] hover:bg-[#f0f6fc]'
-          }`}
+          } ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}
         >
-          <Upload className="w-10 h-10 mx-auto mb-2 text-gray-400" />
-          <p className="text-[14px] font-semibold text-gray-700 mb-1">
-            Kéo thả ảnh vào đây hoặc click để chọn
-          </p>
-          <p className="text-[12px] text-gray-500">
-            JPG, PNG, GIF · Tối đa {maxImages} ảnh · Tự động nén về 800px
-          </p>
+          {isUploading ? (
+            <div className="flex flex-col items-center">
+              <Loader2 className="w-10 h-10 mb-2 text-[#2271b1] animate-spin" />
+              <p className="text-[14px] font-semibold text-gray-700">Đang tải ảnh lên máy chủ...</p>
+            </div>
+          ) : (
+            <>
+              <Upload className="w-10 h-10 mx-auto mb-2 text-gray-400" />
+              <p className="text-[14px] font-semibold text-gray-700 mb-1">
+                Kéo thả ảnh vào đây hoặc click để chọn
+              </p>
+              <p className="text-[12px] text-gray-500">
+                JPG, PNG, GIF · Tối đa {maxImages} ảnh · Tự động nén về 800px
+              </p>
+            </>
+          )}
           <input
             ref={fileInputRef}
             type="file"

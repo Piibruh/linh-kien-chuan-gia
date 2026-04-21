@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Product } from './productStore';
 import { User, UserRole, useAuthStore } from './authStore';
-import productsData from '../data/products.json';
 import { mapPrismaOrderToStore } from '../lib/orderMap';
 import type { OrderPaymentMethod, OrderPaymentStatus, OrderStatus } from '../lib/orderFlow';
 
@@ -20,14 +19,48 @@ const CATEGORY_IMAGES: Record<string, string> = {
     'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400',
 };
 
-const normalizeProduct = (p: any): Product => ({
-  ...p,
-  oldPrice: p.oldPrice ?? undefined,
-  specs: p.specs || {},
-  images: (p.images as string[]).map((img: string) =>
-    img.startsWith('/') ? CATEGORY_IMAGES[p.category] ?? CATEGORY_IMAGES['Phụ kiện'] : img
-  ),
-});
+const normalizeProduct = (p: any): Product & any => {
+  const cat = p.category || p.maDanhMuc || 'Phụ kiện';
+  const imgs = Array.isArray(p.images) && p.images.length > 0 ? p.images : (p.image ? [p.image] : []);
+  const mappedImgs = imgs.map((img: string) =>
+    img.startsWith('/') ? CATEGORY_IMAGES[cat] ?? CATEGORY_IMAGES['Phụ kiện'] : img
+  );
+
+  return {
+    ...p,
+    maSanPham: p.maSanPham || p.id || p.slug || '',
+    tenSanPham: p.tenSanPham || p.name || '',
+    maDanhMuc: cat,
+    thuongHieu: p.thuongHieu || p.brand || '',
+    giaBan: p.giaBan ?? p.price ?? 0,
+    soLuongTon: p.soLuongTon ?? p.stock ?? 0,
+    moTaKT: p.moTaKT || p.description || '',
+
+    id: p.id || p.maSanPham || p.slug || '',
+    name: p.name || p.tenSanPham || '',
+    category: cat,
+    brand: p.brand || p.thuongHieu || '',
+    price: p.price ?? p.giaBan ?? 0,
+    stock: p.stock ?? p.soLuongTon ?? 0,
+    sold: p.sold ?? 0,
+    rating: p.rating ?? 0,
+    reviews: p.reviews ?? 0,
+    oldPrice: p.oldPrice ?? undefined,
+    specs: p.specs || {},
+    images: mappedImgs,
+    status: p.status || p.trangThai || 'published',
+    visibility: p.visibility || p.hienThi || 'public',
+    usageGuide: p.usageGuide || p.huongDan || '',
+    seoTitle: p.seoTitle ?? '',
+    seoDescription: p.seoDescription ?? '',
+    seoKeywords: p.seoKeywords ?? '',
+    tags: Array.isArray(p.tags) ? p.tags : (typeof p.tags === 'string' ? p.tags.split(',') : []),
+    publishDate: p.publishDate || p.ngayXuatBan || '',
+    views: p.views ?? p.luotXem ?? 0,
+    editCount: p.editCount ?? p.soLanSua ?? 0,
+    lastEditedBy: p.lastEditedBy || p.nguoiSuaCuoi || '',
+  };
+};
 
 const buildAuthHeaders = () => {
   const token = useAuthStore.getState().token;
@@ -123,204 +156,6 @@ export interface CreateOrderPayload {
 
 const nowIso = () => new Date().toISOString();
 
-// Initial mock data
-const INITIAL_PRODUCTS: Product[] = (productsData as any[]).map(normalizeProduct);
-
-const INITIAL_ORDERS: Order[] = [
-  {
-    id: 'ORD-001',
-    customerId: 'u3',
-    customerName: 'Nguyễn Văn A',
-    customerEmail: 'nguyenvana@email.com',
-    products: [
-      { id: 'SP001', name: 'Arduino UNO R3', quantity: 1, price: 235000 },
-      { id: 'SP015', name: 'DHT22', quantity: 2, price: 78000 },
-    ],
-    totalAmount: 391000,
-    status: 'completed',
-    shippingAddress: '123 Đường ABC, Quận 1, TP.HCM',
-    phoneNumber: '0912345678',
-    createdAt: '2026-03-30T10:30:00Z',
-    updatedAt: '2026-03-30T14:20:00Z',
-  },
-  {
-    id: 'ORD-002',
-    customerId: 'u3',
-    customerName: 'Trần Thị B',
-    customerEmail: 'tranthib@email.com',
-    products: [{ id: 'SP001', name: 'Arduino UNO R3', quantity: 1, price: 235000 }],
-    totalAmount: 235000,
-    status: 'processing',
-    shippingAddress: '456 Đường XYZ, Quận 3, TP.HCM',
-    phoneNumber: '0987654321',
-    createdAt: '2026-03-30T09:15:00Z',
-    updatedAt: '2026-03-30T09:15:00Z',
-  },
-  {
-    id: 'ORD-003',
-    customerId: 'u3',
-    customerName: 'Lê Văn C',
-    customerEmail: 'levanc@email.com',
-    products: [
-      { id: 'SP025', name: 'Relay Module 5V', quantity: 1, price: 25000 },
-      { id: 'SP051', name: 'Breadboard 830 điểm', quantity: 1, price: 15000 },
-    ],
-    totalAmount: 40000,
-    status: 'pending',
-    shippingAddress: '789 Đường DEF, Quận 5, TP.HCM',
-    phoneNumber: '0969000001',
-    createdAt: '2026-03-29T16:45:00Z',
-    updatedAt: '2026-03-29T16:45:00Z',
-  },
-  {
-    id: 'ORD-004',
-    customerId: 'u3',
-    customerName: 'Phạm Thị D',
-    customerEmail: 'phamthid@email.com',
-    products: [
-      { id: 'SP004', name: 'ESP8266 NodeMCU', quantity: 1, price: 85000 },
-      { id: 'SP030', name: 'OLED Display 0.96', quantity: 1, price: 45000 },
-    ],
-    totalAmount: 130000,
-    status: 'completed',
-    shippingAddress: '321 Đường GHI, Quận 7, TP.HCM',
-    phoneNumber: '0923456789',
-    createdAt: '2026-03-29T11:20:00Z',
-    updatedAt: '2026-03-29T15:30:00Z',
-  },
-  {
-    id: 'ORD-005',
-    customerId: 'u3',
-    customerName: 'Hoàng Văn E',
-    customerEmail: 'hoangvane@email.com',
-    products: [{ id: 'SP006', name: 'Raspberry Pi Pico', quantity: 1, price: 89000 }],
-    totalAmount: 89000,
-    status: 'cancelled',
-    shippingAddress: '654 Đường JKL, Quận 10, TP.HCM',
-    phoneNumber: '0934567890',
-    createdAt: '2026-03-28T14:30:00Z',
-    updatedAt: '2026-03-28T16:00:00Z',
-  },
-  {
-    id: 'ORD-006',
-    customerId: 'u3',
-    customerName: 'Đặng Thị F',
-    customerEmail: 'dangthif@email.com',
-    products: [
-      { id: 'SP017', name: 'MPU6050', quantity: 1, price: 35000 },
-      { id: 'SP011', name: 'HC-SR04', quantity: 1, price: 35000 },
-    ],
-    totalAmount: 70000,
-    status: 'processing',
-    shippingAddress: '987 Đường MNO, Quận Bình Thạnh, TP.HCM',
-    phoneNumber: '0945678901',
-    createdAt: '2026-03-28T10:10:00Z',
-    updatedAt: '2026-03-28T10:10:00Z',
-  },
-  {
-    id: 'ORD-007',
-    customerId: 'u3',
-    customerName: 'Vũ Văn G',
-    customerEmail: 'vuvang@email.com',
-    products: [{ id: 'SP027', name: 'L298N Motor Driver', quantity: 1, price: 42000 }],
-    totalAmount: 42000,
-    status: 'completed',
-    shippingAddress: '147 Đường PQR, Quận Tân Bình, TP.HCM',
-    phoneNumber: '0956789012',
-    createdAt: '2026-03-27T13:25:00Z',
-    updatedAt: '2026-03-27T17:45:00Z',
-  },
-  {
-    id: 'ORD-008',
-    customerId: 'u3',
-    customerName: 'Bùi Thị H',
-    customerEmail: 'buithih@email.com',
-    products: [
-      { id: 'SP029', name: 'HC-05 Bluetooth', quantity: 1, price: 98000 },
-      { id: 'SP052', name: 'Jumper Wires 40p', quantity: 1, price: 15000 },
-    ],
-    totalAmount: 113000,
-    status: 'pending',
-    shippingAddress: '258 Đường STU, Quận Phú Nhuận, TP.HCM',
-    phoneNumber: '0967890123',
-    createdAt: '2026-03-27T09:40:00Z',
-    updatedAt: '2026-03-27T09:40:00Z',
-  },
-];
-
-const INITIAL_USERS: StoredUser[] = [
-  {
-    id: 'u1',
-    name: 'Admin System',
-    email: 'admin@test.com',
-    password: 'password123',
-    role: 'admin',
-    phone: '0912345678',
-    address: '123 Đường ABC, Quận 1, TP.HCM',
-    createdAt: '2026-03-01T08:00:00Z',
-  },
-  {
-    id: 'u2',
-    name: 'Nhân viên Bán hàng',
-    email: 'staff@test.com',
-    password: 'staff123',
-    role: 'staff',
-    phone: '0987654321',
-    address: '456 Đường XYZ, Quận 3, TP.HCM',
-    createdAt: '2026-03-10T08:00:00Z',
-  },
-  {
-    id: 'u_p1',
-    name: 'Quản lý Sản phẩm',
-    email: 'product@test.com',
-    password: 'product123',
-    role: 'product_staff',
-    phone: '0911222333',
-    address: 'Hà Nội',
-    createdAt: '2026-04-20T10:00:00Z',
-  },
-  {
-    id: 'u_o1',
-    name: 'Quản lý Đơn hàng',
-    email: 'order@test.com',
-    password: 'order123',
-    role: 'order_staff',
-    phone: '0944555666',
-    address: 'TP.HCM',
-    createdAt: '2026-04-20T11:00:00Z',
-  },
-  {
-    id: 'u3',
-    name: 'Nguyễn Văn A',
-    email: 'user@test.com',
-    password: 'user123',
-    role: 'user',
-    phone: '0969000001',
-    address: '789 Đường DEF, Quận 5, TP.HCM',
-    createdAt: '2026-03-15T08:00:00Z',
-  },
-  {
-    id: 'u4',
-    name: 'Trần Thị B',
-    email: 'tranthib@email.com',
-    password: 'user123',
-    role: 'user',
-    phone: '0923456789',
-    address: '321 Đường GHI, Quận 7, TP.HCM',
-    createdAt: '2026-03-18T08:00:00Z',
-  },
-  {
-    id: 'u5',
-    name: 'Lê Văn C',
-    email: 'levanc@email.com',
-    password: 'user123',
-    role: 'user',
-    phone: '0934567890',
-    address: '654 Đường JKL, Quận 10, TP.HCM',
-    createdAt: '2026-03-20T08:00:00Z',
-  },
-];
-
 const INITIAL_CATEGORIES: string[] = ['Vi điều khiển', 'Cảm biến', 'Module', 'Linh kiện cơ bản', 'Phụ kiện'];
 
 // Mock API delay
@@ -353,7 +188,7 @@ const applyLocalStatusUpdate = (order: Order, nextStatus: OrderStatus): Order =>
   if (nextStatus === 'processing' && order.trangThai === 'pending') {
     return normalizeOrder({
       ...order,
-      status: 'processing',
+      trangThai: 'processing',
       updatedAt: now,
       confirmedAt: order.confirmedAt ?? now,
     });
@@ -362,7 +197,7 @@ const applyLocalStatusUpdate = (order: Order, nextStatus: OrderStatus): Order =>
   if (nextStatus === 'shipping' && order.trangThai === 'processing') {
     return normalizeOrder({
       ...order,
-      status: 'shipping',
+      trangThai: 'shipping',
       updatedAt: now,
       confirmedAt: order.confirmedAt ?? now,
       shippedAt: now,
@@ -372,7 +207,7 @@ const applyLocalStatusUpdate = (order: Order, nextStatus: OrderStatus): Order =>
   if (nextStatus === 'delivered' && order.trangThai === 'shipping') {
     return normalizeOrder({
       ...order,
-      status: 'delivered',
+      trangThai: 'delivered',
       updatedAt: now,
       deliveredAt: now,
       shippedAt: order.shippedAt ?? now,
@@ -382,7 +217,7 @@ const applyLocalStatusUpdate = (order: Order, nextStatus: OrderStatus): Order =>
   if (nextStatus === 'completed' && order.trangThai === 'delivered' && paymentStatus === 'paid') {
     return normalizeOrder({
       ...order,
-      status: 'completed',
+      trangThai: 'completed',
       updatedAt: now,
       completedAt: now,
       deliveredAt: order.deliveredAt ?? now,
@@ -392,7 +227,7 @@ const applyLocalStatusUpdate = (order: Order, nextStatus: OrderStatus): Order =>
   if (nextStatus === 'cancelled' && ['pending', 'processing', 'shipping'].includes(order.trangThai)) {
     return normalizeOrder({
       ...order,
-      status: 'cancelled',
+      trangThai: 'cancelled',
       updatedAt: now,
       cancelledAt: now,
     });
@@ -416,26 +251,26 @@ interface AdminStore {
   // Products
   products: Product[];
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
-  updateProduct: (id: string, updates: Partial<Product>) => Promise<void>;
-  deleteProduct: (id: string) => Promise<void>;
+  updateProduct: (maDonHang: string, updates: Partial<Product>) => Promise<void>;
+  deleteProduct: (maDonHang: string) => Promise<void>;
   setProductsFromServer: (products: Product[]) => void;
 
   // Orders
   orders: Order[];
   createOrder: (payload: CreateOrderPayload) => Promise<Order>;
-  updateOrderStatus: (id: string, status: OrderStatus) => Promise<void>;
-  markOrderCodCollected: (id: string) => Promise<void>;
-  deleteOrder: (id: string) => Promise<void>;
+  updateOrderStatus: (maDonHang: string, status: OrderStatus) => Promise<void>;
+  markOrderCodCollected: (maDonHang: string) => Promise<void>;
+  deleteOrder: (maDonHang: string) => Promise<void>;
   setOrdersFromServer: (orders: Order[]) => void;
   bootstrapFromApi: () => Promise<void>;
-  cancelOrderByCustomer: (id: string, reason: string, note?: string) => Promise<void>;
+  cancelOrderByCustomer: (maDonHang: string, reason: string, note?: string) => Promise<void>;
   patchOrderCustomerInfo: (
-    id: string,
+    maDonHang: string,
     payload: Partial<{
       notes: string;
-      phone: string;
+      dienThoai: string;
       fullName: string;
-      address: string;
+      diaChi: string;
       city: string;
       district: string;
       ward: string;
@@ -444,14 +279,14 @@ interface AdminStore {
 
   // Categories
   categories: string[];
-  addCategory: (name: string) => Promise<{ success: boolean; message: string }>;
-  deleteCategory: (name: string) => Promise<{ success: boolean; message: string }>;
+  addCategory: (hoTen: string) => Promise<{ success: boolean; message: string }>;
+  deleteCategory: (hoTen: string) => Promise<{ success: boolean; message: string }>;
 
   // Users
   users: StoredUser[];
-  updateUserRole: (id: string, role: UserRole) => Promise<void>;
-  updateUserProfile: (id: string, data: Partial<Pick<StoredUser, 'name' | 'phone' | 'address'>>) => Promise<void>;
-  deleteUser: (id: string) => Promise<void>;
+  updateUserRole: (maNguoiDung: string, role: UserRole) => Promise<void>;
+  updateUserProfile: (maNguoiDung: string, data: Partial<Pick<StoredUser, 'hoTen' | 'dienThoai' | 'diaChi'>>) => Promise<void>;
+  deleteUser: (maNguoiDung: string) => Promise<void>;
   addUser: (user: Omit<StoredUser, 'id' | 'createdAt'>) => Promise<void>;
   updateUserPassword: (
     email: string,
@@ -465,9 +300,9 @@ export const useAdminStore = create<AdminStore>()(
   persist(
     (set, get) => ({
       // Initial state
-      products: INITIAL_PRODUCTS,
-      orders: INITIAL_ORDERS.map(normalizeOrder),
-      users: INITIAL_USERS,
+      products: [],
+      orders: [],
+      users: [],
       categories: INITIAL_CATEGORIES,
       storeConfig: {
         flashSaleThreshold: 0.2,
@@ -495,7 +330,7 @@ export const useAdminStore = create<AdminStore>()(
         await delay();
         const newProduct: Product = {
           ...productData,
-          id: `SP${String(get().products.length + 1).padStart(3, '0')}`,
+          maDonHang: `SP${String(get().products.length + 1).padStart(3, '0')}`,
         };
         set((state) => ({
           products: [...state.products, newProduct],
@@ -613,9 +448,9 @@ export const useAdminStore = create<AdminStore>()(
         try {
           const body = {
             fullName: trimmedName,
-            phone: trimmedPhone,
+            dienThoai: trimmedPhone,
             email: trimmedEmail,
-            address: trimmedAddress,
+            diaChi: trimmedAddress,
             city: (payload.city ?? '').trim(),
             district: (payload.district ?? '').trim(),
             ward: (payload.ward ?? '').trim(),
@@ -631,9 +466,9 @@ export const useAdminStore = create<AdminStore>()(
             items: payload.chiTiet.map((line) => {
               const p = productsById.get(line.maSanPham);
               return {
-                productId: line.maSanPham,
+                maSanPham: line.maSanPham,
                 slug: p?.slug ?? line.maSanPham,
-                name: line.tenSanPham,
+                hoTen: line.tenSanPham,
                 image: p?.images?.[0] ?? '',
                 price: line.donGia,
                 quantity: line.soLuong,
@@ -806,8 +641,9 @@ export const useAdminStore = create<AdminStore>()(
         try {
           const pr = await safeJsonFetch('/api/products');
           if (pr.ok) {
-            const { items } = await pr.json();
-            set({ products: (items as any[]).map(normalizeProduct) });
+            const data = await pr.json();
+            const productsList = data.products || data.items || [];
+            set({ products: (productsList as any[]).map(normalizeProduct) });
           }
           const token = useAuthStore.getState().token;
           if (token) {
@@ -857,7 +693,7 @@ export const useAdminStore = create<AdminStore>()(
               o.maDonHang === id
                 ? normalizeOrder({
                     ...o,
-                    status: 'cancelled' as OrderStatus,
+                    trangThai: 'cancelled' as OrderStatus,
                     cancelReason: reason,
                     cancelNote: note ?? null,
                     updatedAt: now,
@@ -1052,14 +888,14 @@ export const useAdminStore = create<AdminStore>()(
             throw new Error(typeof data?.error === 'string' ? data.error : 'Không thể cập nhật vai trò');
           }
           set((state) => ({
-            users: state.users.map((u) => (u.id === id ? { ...u, role } : u)),
+            users: state.users.map((u) => (u.maNguoiDung === id ? { ...u, role } : u)),
           }));
           return;
         }
 
         await delay();
         set((state) => ({
-          users: state.users.map((u) => (u.id === id ? { ...u, role } : u)),
+          users: state.users.map((u) => (u.maNguoiDung === id ? { ...u, role } : u)),
         }));
       },
 
@@ -1076,14 +912,14 @@ export const useAdminStore = create<AdminStore>()(
           }
           const updated = response.user;
           set((state) => ({
-            users: state.users.map((u) => (u.id === id ? { ...u, ...updated } : u)),
+            users: state.users.map((u) => (u.maNguoiDung === id ? { ...u, ...updated } : u)),
           }));
           return;
         }
 
         await delay(250);
         set((state) => ({
-          users: state.users.map((u) => (u.id === id ? { ...u, ...data } : u)),
+          users: state.users.map((u) => (u.maNguoiDung === id ? { ...u, ...data } : u)),
         }));
       },
 
@@ -1097,14 +933,14 @@ export const useAdminStore = create<AdminStore>()(
             throw new Error('Không thể xóa người dùng');
           }
           set((state) => ({
-            users: state.users.filter((u) => u.id !== id),
+            users: state.users.filter((u) => u.maNguoiDung !== id),
           }));
           return;
         }
 
         await delay();
         set((state) => ({
-          users: state.users.filter((u) => u.id !== id),
+          users: state.users.filter((u) => u.maNguoiDung !== id),
         }));
       },
 
@@ -1127,7 +963,7 @@ export const useAdminStore = create<AdminStore>()(
         await delay();
         const newUser: StoredUser = {
           ...userData,
-          id: `u${get().users.length + 1}`,
+          maDonHang: `u${get().users.length + 1}`,
           createdAt: nowIso(),
         };
         set((state) => ({
@@ -1157,7 +993,7 @@ export const useAdminStore = create<AdminStore>()(
       },
     }),
     {
-      name: 'electro-admin',
+      hoTen: 'electro-admin',
       merge: (persistedState: any, currentState: any) => {
         if (!persistedState) return currentState;
         // Preserve persisted arrays (products, orders, users, categories)
@@ -1166,9 +1002,9 @@ export const useAdminStore = create<AdminStore>()(
           ...currentState,
           ...persistedState,
           // Only use persisted arrays if they exist; never re-seed from INITIAL data
-          products: persistedState.products ?? currentState.products,
+          products: persistedState.products ? persistedState.products.map(normalizeProduct) : currentState.products,
           orders: (persistedState.orders ?? currentState.orders).map(normalizeOrder),
-          users: persistedState.users ?? currentState.users,
+          users: persistedState.users ? persistedState.users.map(normalizeUser) : currentState.users,
           categories: persistedState.categories ?? currentState.categories,
           storeConfig: persistedState.storeConfig ?? currentState.storeConfig,
         };
@@ -1193,7 +1029,7 @@ export function useEffectiveProducts() {
   if (!isFsActive) return currentProducts;
 
   const manualPrices = new Map<string, number>(
-    (storeConfig.flashSaleItems || []).map(i => [i.productId, i.flashSalePrice])
+    (storeConfig.flashSaleItems || []).map(i => [i.maSanPham || i.productId, i.flashSalePrice])
   );
   
   const threshold = storeConfig.flashSaleThreshold ?? 0.2;
@@ -1206,7 +1042,7 @@ export function useEffectiveProducts() {
         return {
           ...p,
           oldPrice: p.giaBan,
-          price: fsPrice
+          giaBan: fsPrice
         };
       }
     }

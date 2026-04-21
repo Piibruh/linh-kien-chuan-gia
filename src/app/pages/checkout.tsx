@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CreditCard, Truck, ShieldCheck, MapPin, Phone, User, Mail, Package } from 'lucide-react';
+import { CreditCard, Truck, ShieldCheck, MapPin, Phone, User, Package, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useCartStore } from '../../store/cartStore';
 import { useAuthStore } from '../../store/authStore';
@@ -25,11 +25,10 @@ interface FormData {
   notes: string;
 }
 
-const shippingOptions = [
-  { id: 'fast', name: 'Giao hàng nhanh', fee: 35000, time: '1-2 ngày', icon: Package },
-  { id: 'standard', name: 'Viettel Post', fee: 25000, time: '2-3 ngày', icon: Truck },
-  { id: 'economy', name: 'Giao hàng tiết kiệm', fee: 15000, time: '3-5 ngày', icon: Truck },
-];
+// Shipping and Payment policies
+// - COD: Free ship nội thành HN, ngoại thành/tỉnh theo phí đvvc
+// - Chuyển khoản: Freeship
+// - Min order: 50k
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -50,7 +49,7 @@ export default function CheckoutPage() {
   });
 
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
-  const [shippingMethod, setShippingMethod] = useState('standard');
+  const [shippingMethod, setShippingMethod] = useState('custom');
   const [errors, setErrors] = useState<Partial<FormData>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -149,6 +148,11 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (subtotal < 50000) {
+      toast.error('Đơn hàng tối thiểu phải từ 50.000₫');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -167,8 +171,7 @@ export default function CheckoutPage() {
         .filter(Boolean)
         .join(', ');
 
-      const selectedShipping = shippingOptions.find((s) => s.id === shippingMethod)!;
-      const shippingFee = selectedShipping.fee;
+      const shippingFee = 0; 
       const total = subtotal + shippingFee;
 
       await createOrder({
@@ -207,8 +210,7 @@ export default function CheckoutPage() {
     }
   };
 
-  const selectedShipping = shippingOptions.find((s) => s.id === shippingMethod)!;
-  const shippingFee = selectedShipping.fee;
+  const shippingFee = 0;
   const total = subtotal + shippingFee;
 
   return (
@@ -455,48 +457,27 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Shipping Method */}
+            {/* Shipping Policy Info */}
             <div className="bg-card border border-border rounded-xl p-6">
-              <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
-                <Truck className="h-5 w-5 text-primary" />
-                Phương thức vận chuyển
+              <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5 text-green-500" />
+                Chính sách vận chuyển
               </h2>
-
-              <div className="space-y-3">
-                {shippingOptions.map((option) => {
-                  const Icon = option.icon;
-                  return (
-                    <label
-                      key={option.id}
-                      className={`flex items-center gap-4 p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                        shippingMethod === option.id
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border hover:border-primary/50'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="shippingMethod"
-                        value={option.id}
-                        checked={shippingMethod === option.id}
-                        onChange={(e) => setShippingMethod(e.target.value)}
-                        className="w-4 h-4 text-primary"
-                      />
-                      <Icon className="h-5 w-5 text-primary" />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-foreground">{option.name}</span>
-                          <span className="font-bold text-primary">
-                            {option.fee.toLocaleString('vi-VN')}₫
-                          </span>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Thời gian giao hàng dự kiến: {option.time}
-                        </p>
-                      </div>
-                    </label>
-                  );
-                })}
+              <div className="bg-muted/50 p-4 rounded-lg border border-border">
+                <ul className="space-y-2 text-sm text-foreground">
+                  <li className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                    <span><strong>Thanh toán COD:</strong> Miễn phí nội thành Hà Nội. Khu vực khác tính phí theo đơn vị vận chuyển.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                    <span><strong>Chuyển khoản:</strong> Miễn phí vận chuyển toàn quốc.</span>
+                  </li>
+                  <li className="flex items-start gap-2 text-destructive font-medium">
+                    <div className="w-1.5 h-1.5 rounded-full bg-destructive mt-1.5 flex-shrink-0" />
+                    <span>Áp dụng cho đơn hàng từ 50.000₫ trở lên.</span>
+                  </li>
+                </ul>
               </div>
             </div>
 
@@ -524,9 +505,10 @@ export default function CheckoutPage() {
                       <Truck className="h-5 w-5 text-primary" />
                       <span className="font-medium text-foreground">Thanh toán khi nhận hàng (COD)</span>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Thanh toán bằng tiền mặt khi nhận hàng
-                    </p>
+                    <div className="mt-1 space-y-1">
+                      <p className="text-sm text-muted-foreground">Thanh toán bằng tiền mặt khi nhận hàng</p>
+                      <p className="text-xs text-primary font-medium italic">Ghi chú: Miễn phí nội thành HN, tỉnh khác phí tính theo ĐVVC</p>
+                    </div>
                   </div>
                 </label>
 
@@ -546,9 +528,10 @@ export default function CheckoutPage() {
                       <CreditCard className="h-5 w-5 text-primary" />
                       <span className="font-medium text-foreground">Chuyển khoản ngân hàng</span>
                     </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Thanh toán qua chuyển khoản hoặc quét mã QR
-                    </p>
+                    <div className="mt-1 space-y-1">
+                      <p className="text-sm text-muted-foreground">Thanh toán trực tiếp qua số tài khoản hoặc mã QR</p>
+                      <p className="text-xs text-green-600 font-bold italic">Ưu đãi: MIỄN PHÍ VẬN CHUYỂN TOÀN QUỐC</p>
+                    </div>
                   </div>
                 </label>
 
@@ -602,7 +585,9 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex items-center justify-between text-foreground">
                   <span>Phí vận chuyển:</span>
-                  <span className="font-medium">{shippingFee.toLocaleString('vi-VN')}₫</span>
+                  <span className="font-medium text-green-600">
+                    {paymentMethod === 'online' ? 'Miễn phí' : 'Tính sau'}
+                  </span>
                 </div>
                 <div className="border-t border-border pt-3">
                   <div className="flex items-center justify-between">

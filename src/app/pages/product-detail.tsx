@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, ZoomIn, Star, ShoppingCart, Zap, Shield, TrendingUp, Package, ArrowLeft, ThumbsUp, User as UserIcon } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router';
 import { ProductCard } from '../components/product-card';
@@ -18,46 +18,47 @@ export default function ProductDetailPage() {
 
   const getProductSummary = useReviewStore((s) => s.getProductSummary);
   const getProductReviews = useReviewStore((s) => s.getProductReviews);
+  const fetchReviews = useReviewStore((s) => s.fetchReviews);
   const addReviewStore = useReviewStore((s) => s.addReview);
-  const markHelpful = useReviewStore((s) => s.markHelpful);
+  
   const user = useAuthStore((s) => s.user);
 
+  useEffect(() => {
+    if (id) {
+      fetchReviews(id);
+    }
+  }, [id, fetchReviews]);
+
   const reviewSummary = useMemo(() => product ? getProductSummary(product.id) : null, [product, getProductSummary]);
-  const productReviews = useMemo(() => product ? getProductReviews(product.id) : [], [product, getProductReviews]);
+  const productReviews = getProductReviews();
 
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<'description' | 'specs' | 'reviews'>('description');
   const [isZoomed, setIsZoomed] = useState(false);
   
-  // Review form states
   const [newRating, setNewRating] = useState(5);
-  const [newReviewTitle, setNewReviewTitle] = useState('');
-  const [newReviewBody, setNewReviewBody] = useState('');
+  const [newReviewComment, setNewReviewComment] = useState('');
 
-  const submitReview = () => {
+  const submitReview = async () => {
     if (!product || !user) {
       toast.error('Vui lòng đăng nhập để đánh giá');
       return;
     }
-    if (!newReviewTitle.trim() || !newReviewBody.trim()) {
-      toast.error('Vui lòng nhập đầy đủ tiêu đề và nội dung đánh giá');
+    if (!newReviewComment.trim()) {
+      toast.error('Vui lòng nhập nội dung đánh giá');
       return;
     }
-    addReviewStore({
-      productId: product.id,
-      userId: user.id,
-      userName: user.name,
-      userAvatar: user.name.slice(0, 2).toUpperCase(),
-      rating: newRating,
-      title: newReviewTitle,
-      body: newReviewBody,
-      verified: true, // Assuming bought
-    });
-    setNewReviewTitle('');
-    setNewReviewBody('');
-    setNewRating(5);
-    toast.success('Đã gửi đánh giá thành công!');
+    
+    const success = await addReviewStore(product.id, newRating, newReviewComment);
+    
+    if (success) {
+      setNewReviewComment('');
+      setNewRating(5);
+      toast.success('Đã gửi đánh giá thành công!');
+    } else {
+      toast.error('Không thể gửi đánh giá. Vui lòng thử lại.');
+    }
   };
 
   // Related products: same category, exclude current
@@ -500,19 +501,12 @@ export default function ProductDetailPage() {
                         ))}
                       </div>
                     </div>
-                    <input
-                      type="text"
-                      placeholder="Tiêu đề đánh giá (ví dụ: Sản phẩm rất tốt)"
-                      value={newReviewTitle}
-                      onChange={(e) => setNewReviewTitle(e.target.value)}
-                      className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
-                    />
                     <textarea
-                      placeholder="Chia sẻ thêm cảm nhận của bạn về sản phẩm..."
-                      value={newReviewBody}
-                      onChange={(e) => setNewReviewBody(e.target.value)}
-                      rows={3}
-                      className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+                      placeholder="Chia sẻ cảm nhận của bạn về sản phẩm..."
+                      value={newReviewComment}
+                      onChange={(e) => setNewReviewComment(e.target.value)}
+                      rows={4}
+                      className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
                     />
                     <button onClick={submitReview} className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-bold hover:bg-primary/90 transition-all">
                       Gửi đánh giá
@@ -566,16 +560,12 @@ export default function ProductDetailPage() {
                               ))}
                             </div>
 
-                            <h4 className="font-medium text-foreground mb-1">{review.title}</h4>
-                            <p className="text-sm text-foreground/80 leading-relaxed mb-3 whitespace-pre-wrap">{review.body}</p>
+                             <p className="text-sm text-foreground/80 leading-relaxed mb-3 whitespace-pre-wrap">{review.comment}</p>
 
-                            <button
-                              onClick={() => markHelpful(review.id)}
-                              className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary transition-colors bg-muted/30 hover:bg-muted/50 px-2 py-1 rounded"
-                            >
-                              <ThumbsUp className="h-3 w-3" />
-                              Hữu ích ({review.helpful})
-                            </button>
+                             <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground bg-muted/30 px-2 py-1 rounded w-fit">
+                               <ThumbsUp className="h-3 w-3" />
+                               Hữu ích
+                             </div>
                           </div>
                         </div>
                       </div>

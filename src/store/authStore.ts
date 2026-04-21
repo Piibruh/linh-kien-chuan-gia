@@ -5,7 +5,7 @@ export interface User {
   maNguoiDung: string;
   hoTen: string;
   email: string;
-  role: 'admin' | 'user' | 'product_staff' | 'order_staff';
+  role: 'admin' | 'user' | 'product_staff' | 'order_staff' | 'staff';
   dienThoai?: string;
   diaChi?: string;
 }
@@ -24,6 +24,7 @@ const ROLES_PERMISSIONS: Record<string, string[]> = {
   admin: ['all'],
   product_staff: ['view_dashboard', 'manage_products', 'view_orders'],
   order_staff: ['view_dashboard', 'manage_orders', 'view_products'],
+  staff: ['view_dashboard', 'manage_products', 'manage_orders', 'manage_categories', 'view_products', 'view_orders'],
   user: ['view_profile', 'place_orders'],
 };
 
@@ -131,6 +132,21 @@ export const useAuthStore = create<AuthStore>()(
     }),
     {
       name: 'electro-auth',
+      merge: (persistedState: any, currentState: any) => {
+        if (!persistedState) return currentState;
+        const pUser = persistedState.user;
+        if (pUser) {
+          pUser.maNguoiDung = pUser.maNguoiDung || pUser.id || '';
+          pUser.hoTen = pUser.hoTen || pUser.name || '';
+          pUser.dienThoai = pUser.dienThoai || pUser.phone || '';
+          pUser.diaChi = pUser.diaChi || pUser.address || '';
+        }
+        return {
+          ...currentState,
+          ...persistedState,
+          user: pUser,
+        };
+      },
     }
   )
 );
