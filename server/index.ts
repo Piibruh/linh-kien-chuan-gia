@@ -182,7 +182,7 @@ function mapOrder(dh: any) {
     emailNguoiNhan: dh.nguoiDung?.email ?? '',
     diaChiGiao: dh.diaChiGiao ?? '',
     tongTien: dh.tongTien,
-    trangThai: dh.trangThai,
+    trangThai: mapStatus(dh.trangThai),
     ngayDat: dh.ngayDat?.toISOString?.() ?? new Date().toISOString(),
     updatedAt: dh.updatedAt?.toISOString?.() ?? dh.ngayDat?.toISOString?.() ?? new Date().toISOString(),
     paymentMethod: payment?.phuongThuc === 'online' ? 'online' : 'cod',
@@ -662,7 +662,7 @@ app.patch('/api/orders/:id/status', authRequired, async (req, res) => {
       include: orderInclude,
     });
     if (!dh) {
-      res.status(404).json({ error: 'KhÃ´ng tÃ¬m tháº¥y Ä‘Æ¡n hÃ ng' });
+      res.status(404).json({ error: 'Không tìm thấy đơn hàng' });
       return;
     }
 
@@ -676,11 +676,11 @@ app.patch('/api/orders/:id/status', authRequired, async (req, res) => {
 
     if (nextStatus === 'processing') {
       if (!isManager) {
-        res.status(403).json({ error: 'Chá»‰ admin/staff Ä‘Æ°á»£c xÃ¡c nháº­n Ä‘Æ¡n' });
+        res.status(403).json({ error: 'Chỉ admin/staff được xác nhận đơn' });
         return;
       }
       if (currentStatus !== 'pending') {
-        res.status(400).json({ error: 'ÄÆ¡n hÃ ng chá»‰ cÃ³ thá»ƒ xÃ¡c nháº­n tá»« tráº¡ng thÃ¡i chá» xÃ¡c nháº­n' });
+        res.status(400).json({ error: 'Đơn hàng chỉ có thể xác nhận từ trạng thái chờ xác nhận' });
         return;
       }
       data.trangThai = ORDER_STATUS_DB.processing;
@@ -688,11 +688,11 @@ app.patch('/api/orders/:id/status', authRequired, async (req, res) => {
       shippingData.trangThai = ORDER_STATUS_DB.processing;
     } else if (nextStatus === 'shipping') {
       if (!isManager) {
-        res.status(403).json({ error: 'Chá»‰ admin/staff Ä‘Æ°á»£c bÃ n giao cho váº­n chuyá»ƒn' });
+        res.status(403).json({ error: 'Chỉ admin/staff được bàn giao cho vận chuyển' });
         return;
       }
       if (currentStatus !== 'processing') {
-        res.status(400).json({ error: 'ÄÆ¡n hÃ ng pháº£i Ä‘Æ°á»£c xÃ¡c nháº­n trÆ°á»›c khi chuyá»ƒn giao' });
+        res.status(400).json({ error: 'Đơn hàng phải được xác nhận trước khi chuyển giao' });
         return;
       }
       data.trangThai = ORDER_STATUS_DB.shipping;
@@ -701,11 +701,11 @@ app.patch('/api/orders/:id/status', authRequired, async (req, res) => {
       shippingData.trangThai = ORDER_STATUS_DB.shipping;
     } else if (nextStatus === 'delivered') {
       if (!isManager) {
-        res.status(403).json({ error: 'Chá»‰ admin/staff Ä‘Æ°á»£c Ä‘Ã¡nh dáº¥u Ä‘Ã£ giao' });
+        res.status(403).json({ error: 'Chỉ admin/staff được đánh dấu đã giao' });
         return;
       }
       if (currentStatus !== 'shipping') {
-        res.status(400).json({ error: 'ÄÆ¡n hÃ ng pháº£i Ä‘ang giao má»›i cÃ³ thá»ƒ Ä‘Ã¡nh dáº¥u Ä‘Ã£ giao' });
+        res.status(400).json({ error: 'Đơn hàng phải đang giao mới có thể đánh dấu đã giao' });
         return;
       }
       data.trangThai = ORDER_STATUS_DB.delivered;
@@ -713,21 +713,21 @@ app.patch('/api/orders/:id/status', authRequired, async (req, res) => {
       shippingData.trangThai = ORDER_STATUS_DB.delivered;
     } else if (nextStatus === 'completed') {
       if (!isManager && !isOwner) {
-        res.status(403).json({ error: 'KhÃ´ng cÃ³ quyá»n hoÃ n táº¥t Ä‘Æ¡n hÃ ng' });
+        res.status(403).json({ error: 'Không có quyền hoàn tất đơn hàng' });
         return;
       }
       if (currentStatus !== 'delivered') {
-        res.status(400).json({ error: 'ÄÆ¡n hÃ ng chá»‰ hoÃ n táº¥t sau khi Ä‘Ã£ giao' });
+        res.status(400).json({ error: 'Đơn hàng chỉ hoàn tất sau khi đã giao' });
         return;
       }
       if (!isPaymentSettled(dh)) {
-        res.status(400).json({ error: 'ÄÆ¡n COD chÆ°a Ä‘Æ°á»£c xÃ¡c nháº­n Ä‘Ã£ thu tiá»n' });
+        res.status(400).json({ error: 'Đơn COD chưa được xác nhận đã thu tiền' });
         return;
       }
       data.trangThai = ORDER_STATUS_DB.completed;
       data.completedAt = now;
     } else {
-      res.status(400).json({ error: 'KhÃ´ng há»— trá»£ chuyá»ƒn sang tráº¡ng thÃ¡i nÃ y' });
+      res.status(400).json({ error: 'Không hỗ trợ chuyển sang trạng thái này' });
       return;
     }
 

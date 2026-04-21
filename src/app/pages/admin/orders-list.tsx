@@ -206,7 +206,7 @@ export default function OrdersList() {
       if (action === 'collect_cod') await markOrderCodCollected(order.id);
       toast.success(getOrderActionLabel(action));
     } catch (e: any) {
-      toast.error(e?.message ?? 'KhÃ´ng thá»ƒ cáº­p nháº­t Ä‘Æ¡n hÃ ng');
+      toast.error(e?.message ?? 'Không thể cập nhật đơn hàng');
     } finally {
       setUpdatingOrderId(null);
     }

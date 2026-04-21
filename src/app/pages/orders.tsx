@@ -159,8 +159,8 @@ function buildTimelineFromOrder(o: Order): TimelineStep[] {
   };
 
   const step5: TimelineStep = {
-    title: 'HoÃ n táº¥t Ä‘Æ¡n hÃ ng',
-    description: 'KhÃ¡ch hÃ ng Ä‘Ã£ xÃ¡c nháº­n hoáº·c há»‡ thá»‘ng tá»± Ä‘á»™ng hoÃ n táº¥t',
+    title: 'Hoàn tất đơn hàng',
+    description: 'Khách hàng đã xác nhận hoặc hệ thống tự động hoàn tất',
     time: o.completedAt ? fmt(o.completedAt) : null,
     completed: s === 'completed',
   };
