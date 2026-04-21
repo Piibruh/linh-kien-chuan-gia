@@ -588,12 +588,13 @@ app.post('/api/orders', authRequired, async (req, res) => {
   try {
     const order = await prisma.$transaction(async (tx) => {
       for (const item of body.items) {
-        const sp = await tx.sanPham.findUnique({ where: { maSanPham: item.productId } });
+        const maSanPham = item.maSanPham || item.productId;
+        const sp = await tx.sanPham.findUnique({ where: { maSanPham } });
         if (!sp) {
-          throw new Error(`KhÃ´ng tÃ¬m tháº¥y sáº£n pháº©m ${item.productId}`);
+          throw new Error(`Không tìm thấy sản phẩm ${maSanPham}`);
         }
         if (sp.soLuongTon < Number(item.quantity)) {
-          throw new Error(`Sáº£n pháº©m ${sp.tenSanPham} khÃ´ng Ä‘á»§ tá»“n kho`);
+          throw new Error(`Sản phẩm ${sp.tenSanPham} không đủ tồn kho`);
         }
       }
 
@@ -608,7 +609,7 @@ app.post('/api/orders', authRequired, async (req, res) => {
           trangThai: ORDER_STATUS_DB.pending,
           chiTiet: {
             create: body.items.map((i: any) => ({
-              maSanPham: i.productId,
+              maSanPham: i.maSanPham || i.productId,
               soLuong: i.quantity,
               donGia: i.price,
             })),
@@ -633,10 +634,11 @@ app.post('/api/orders', authRequired, async (req, res) => {
 
       // Update stock
       for (const item of body.items) {
-        const sp = await tx.sanPham.findUnique({ where: { maSanPham: item.productId } });
+        const maSanPham = item.maSanPham || item.productId;
+        const sp = await tx.sanPham.findUnique({ where: { maSanPham } });
         if (sp) {
           await tx.sanPham.update({
-            where: { maSanPham: item.productId },
+            where: { maSanPham },
             data: { soLuongTon: Math.max(0, sp.soLuongTon - item.quantity) },
           });
         }

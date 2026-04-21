@@ -111,12 +111,12 @@ const splitAddress = (full: string) => {
 
 /** Timeline theo mốc thời gian thực từ server (confirmedAt, shippedAt, …) */
 function buildTimelineFromOrder(o: Order): TimelineStep[] {
-  if (o.status === 'cancelled') {
+  if (o.trangThai === 'cancelled') {
     return [
       {
         title: 'Đơn hàng đã được đặt',
         description: 'Đơn hàng đã được tiếp nhận',
-        time: fmt(o.createdAt),
+        time: fmt(o.ngayDat),
         completed: true,
       },
       {
@@ -128,12 +128,12 @@ function buildTimelineFromOrder(o: Order): TimelineStep[] {
     ];
   }
 
-  const s = o.status;
+  const s = o.trangThai;
 
   const step1: TimelineStep = {
     title: 'Đơn hàng đã được đặt',
     description: 'Đơn hàng đã được tiếp nhận và đang chờ xử lý',
-    time: fmt(o.createdAt),
+    time: fmt(o.ngayDat),
     completed: true,
   };
 
@@ -210,53 +210,51 @@ export default function OrdersPage() {
   const myOrders: UIOrder[] = useMemo(() => {
     const mine = allOrders.filter(
       (o) =>
-        o.customerId === user.id ||
-        (o.customerId === 'guest' && normEmail(o.customerEmail) === normEmail(user.email))
+        o.maNguoiDung === user.maNguoiDung ||
+        (o.maNguoiDung === 'guest' && normEmail(o.emailNguoiNhan) === normEmail(user.email))
     );
 
     return mine.map((o) => {
-      const items = o.products.map((line) => {
-        const p = products.find((x) => x.id === line.id);
+      const items = (o.chiTiet || []).map((line) => {
+        const p = products.find((x) => x.maSanPham === line.maSanPham);
         return {
-          id: line.id,
-          name: line.name,
-          quantity: line.quantity,
-          price: line.price,
-          image:
-            p?.images?.[0] ||
-            'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?w=100',
+          id: line.maSanPham,
+          name: line.tenSanPham,
+          quantity: line.soLuong,
+          price: line.donGia,
+          image: p?.images?.[0] || 'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?w=100',
         };
       });
 
-      const addr = splitAddress(o.shippingAddress);
+      const addr = splitAddress(o.diaChiGiao || '');
       const lineAddr =
         o.addressLine && o.city
           ? [o.addressLine, o.ward, o.district, o.city].filter(Boolean).join(', ')
-          : o.shippingAddress;
+          : o.diaChiGiao || '';
 
       return {
-        id: o.id,
-        date: fmt(o.createdAt),
-        total: o.totalAmount,
-        status: o.status,
+        id: o.maDonHang,
+        date: fmt(o.ngayDat),
+        total: o.tongTien,
+        status: o.trangThai,
         items,
         shipping: {
           address: addr.address || lineAddr,
           city: addr.city || (o.city ? o.city : ''),
-          phone: o.phoneNumber,
+          phone: o.sdtNhan,
         },
         timeline: buildTimelineFromOrder(o),
         sourceOrder: o,
       };
     });
-  }, [allOrders, products, user.id, user.email]);
+  }, [allOrders, products, user.maNguoiDung, user.email]);
 
   const openDetail = (order: UIOrder) => {
     setSelectedOrder(order);
     const o = order.sourceOrder;
     setEditNotes(o.notes ?? '');
-    setEditPhone(o.phoneNumber ?? '');
-    setEditFullName(o.customerName ?? '');
+    setEditPhone(o.sdtNhan ?? '');
+    setEditFullName(o.tenNguoiNhan ?? '');
     setEditAddressLine(o.addressLine ?? '');
     setEditCity(o.city ?? '');
     setEditDistrict(o.district ?? '');
@@ -269,8 +267,8 @@ export default function OrdersPage() {
     if (!next || next.sourceOrder.updatedAt === selectedOrder.sourceOrder.updatedAt) return;
     const o = next.sourceOrder;
     setEditNotes(o.notes ?? '');
-    setEditPhone(o.phoneNumber ?? '');
-    setEditFullName(o.customerName ?? '');
+    setEditPhone(o.sdtNhan ?? '');
+    setEditFullName(o.tenNguoiNhan ?? '');
     setEditAddressLine(o.addressLine ?? '');
     setEditCity(o.city ?? '');
     setEditDistrict(o.district ?? '');
@@ -526,7 +524,7 @@ export default function OrdersPage() {
               )}
 
               {/* Ghi chú / hủy đơn (chỉ khi chờ xử lý) */}
-              {selectedOrder.sourceOrder.status === 'pending' && (
+              {selectedOrder.sourceOrder.trangThai === 'pending' && (
                 <div className="space-y-3 border border-border rounded-lg p-4 bg-muted/30">
                   <h3 className="font-bold text-foreground">Chỉnh sửa đơn (chưa xác nhận)</h3>
                   <p className="text-muted-foreground text-sm">
@@ -629,7 +627,7 @@ export default function OrdersPage() {
                 </div>
               )}
 
-              {selectedOrder.sourceOrder.status !== 'pending' && (
+              {selectedOrder.sourceOrder.trangThai !== 'pending' && (
                 <div>
                   <h3 className="font-bold text-foreground mb-2">Ghi chú</h3>
                   <p className="text-sm text-muted-foreground rounded-lg border border-border p-3 bg-muted/20">
@@ -639,7 +637,7 @@ export default function OrdersPage() {
               )}
 
               {/* Hiển thị lý do hủy */}
-              {selectedOrder.sourceOrder.status === 'cancelled' && selectedOrder.sourceOrder.cancelReason && (
+              {selectedOrder.sourceOrder.trangThai === 'cancelled' && selectedOrder.sourceOrder.cancelReason && (
                 <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-2">
                   <h3 className="font-bold text-destructive flex items-center gap-2">
                     <XCircle className="h-4 w-4" />
@@ -704,7 +702,7 @@ export default function OrdersPage() {
               </div>
 
               {/* Confirm Delivery Button */}
-              {selectedOrder.sourceOrder.status === 'delivered' && (
+              {selectedOrder.sourceOrder.trangThai === 'delivered' && (
                 <div className="border-t border-border pt-4 mt-6 flex justify-end">
                   <button
                     disabled={!canCompleteOrder(selectedOrder.sourceOrder)}
@@ -712,7 +710,7 @@ export default function OrdersPage() {
                       try {
                         await updateOrderStatus(selectedOrder.id, 'completed');
                         toast.success('Đã hoàn tất đơn hàng');
-                        setSelectedOrder((prev) => prev ? { ...prev, status: 'completed', sourceOrder: { ...prev.sourceOrder, status: 'completed', completedAt: new Date().toISOString() } } : null);
+                        setSelectedOrder((prev) => prev ? { ...prev, status: 'completed', sourceOrder: { ...prev.sourceOrder, trangThai: 'completed', completedAt: new Date().toISOString() } } : null);
                       } catch (e: any) {
                         toast.error(e?.message ?? 'Có lỗi xảy ra khi hoàn tất đơn');
                       }

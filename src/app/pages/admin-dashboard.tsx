@@ -394,7 +394,7 @@ export default function AdminDashboard() {
     (o) =>
       (o.maDonHang || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (o.tenNguoiNhan || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      o.chiTiet.some((p) => p.tenSanPham.toLowerCase().includes(searchQuery.toLowerCase()))
+      (o.chiTiet || []).some((p) => (p.tenSanPham || '').toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const filteredUsers = users.filter((u) => {
@@ -988,7 +988,7 @@ export default function AdminDashboard() {
                             </td>
                             <td className="px-6 py-4">
                               <span className="text-sm text-muted-foreground line-clamp-1">
-                                {order.chiTiet.map((p) => `${p.tenSanPham} (x${p.soLuong})`).join(', ')}
+                                {(order.chiTiet || (order as any).products || []).map((p: any) => `${p.tenSanPham || p.name} (x${p.soLuong || p.quantity})`).join(', ')}
                               </span>
                             </td>
                             <td className="px-6 py-4"><span className="text-sm font-medium text-foreground">{order.tongTien.toLocaleString('vi-VN')}₫</span></td>
@@ -1081,18 +1081,18 @@ export default function AdminDashboard() {
                     <div>
                       <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-3 mb-3">Sản phẩm</h3>
                       <div className="space-y-3">
-                        {selectedOrder.chiTiet.map((item) => {
-                          const pObj = products.find(x => x.maSanPham === item.maSanPham);
+                        {(selectedOrder.chiTiet || (selectedOrder as any).products || []).map((item: any) => {
+                          const pObj = products.find(x => x.maSanPham === (item.maSanPham || item.productId));
                           return (
-                            <div key={item.maSanPham} className="flex items-center gap-4 p-3 bg-muted/30 rounded-xl border border-border/50">
+                            <div key={item.maSanPham || item.productId} className="flex items-center gap-4 p-3 bg-muted/30 rounded-xl border border-border/50">
                               <div className="w-16 h-16 bg-muted rounded-lg overflow-hidden flex-shrink-0">
                                 <img src={pObj?.images?.length ? pObj.images[0] : (pObj?.image || 'https://images.unsplash.com/photo-1524234107056-1c1f48f64ab8?w=100')} alt={item.tenSanPham} className="w-full h-full object-cover" />
                               </div>
                               <div className="flex-1 min-w-0">
-                                <div className="text-sm font-bold text-foreground truncate">{item.tenSanPham}</div>
-                                <div className="text-xs text-muted-foreground mt-0.5">Số lượng: <span className="font-medium text-foreground">{item.soLuong}</span> × {item.donGia.toLocaleString('vi-VN')}₫</div>
+                                <div className="text-sm font-bold text-foreground truncate">{item.tenSanPham || item.name}</div>
+                                <div className="text-xs text-muted-foreground mt-0.5">Số lượng: <span className="font-medium text-foreground">{item.soLuong || item.quantity}</span> × {(item.donGia || item.price).toLocaleString('vi-VN')}₫</div>
                               </div>
-                              <div className="text-sm font-bold text-primary">{(item.donGia * item.soLuong).toLocaleString('vi-VN')}₫</div>
+                              <div className="text-sm font-bold text-primary">{((item.donGia || item.price) * (item.soLuong || item.quantity)).toLocaleString('vi-VN')}₫</div>
                             </div>
                           );
                         })}

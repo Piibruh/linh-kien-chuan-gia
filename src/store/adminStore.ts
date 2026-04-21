@@ -135,6 +135,7 @@ export interface CreateOrderPayload {
   emailNguoiNhan: string;
   sdtNhan: string;
   diaChiGiao: string;
+  addressLine?: string;
   chiTiet: Array<{
     maSanPham: string;
     tenSanPham: string;
@@ -765,20 +766,16 @@ export const useAdminStore = create<AdminStore>()(
               o.maDonHang === id
                 ? normalizeOrder({
                     ...o,
-                    customerName: payload.fullName ?? o.tenNguoiNhan,
-                    phoneNumber: payload.phone ?? o.sdtNhan,
-                    addressLine: payload.address ?? o.addressLine,
-                    city: payload.city ?? o.city,
-                    district: payload.district ?? o.district,
-                    ward: payload.ward ?? o.ward,
-                    shippingAddress: [
-                      payload.address ?? o.addressLine,
-                      payload.ward ?? o.ward,
-                      payload.district ?? o.district,
-                      payload.city ?? o.city,
+                    tenNguoiNhan: payload.fullName ?? o.tenNguoiNhan,
+                    sdtNhan: payload.phone ?? o.sdtNhan,
+                    diaChiGiao: [
+                      payload.address ?? '',
+                      payload.ward ?? '',
+                      payload.district ?? '',
+                      payload.city ?? '',
                     ]
                       .filter(Boolean)
-                      .join(', '),
+                      .join(', ') || o.diaChiGiao,
                     notes: payload.notes ?? o.notes,
                     updatedAt: nowIso(),
                   })
