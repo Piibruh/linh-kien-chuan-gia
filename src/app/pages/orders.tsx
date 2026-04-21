@@ -358,7 +358,11 @@ export default function OrdersPage() {
         ) : (
           <div className="space-y-4">
             {filteredOrders.map((order) => {
-              const statusInfo = statusConfig[order.status];
+              const statusInfo = statusConfig[order.status] || {
+                label: 'Đang xử lý (Chờ cập nhật)',
+                color: 'bg-gray-100 text-gray-800 border-gray-200',
+                icon: Package,
+              };
               const StatusIcon = statusInfo.icon;
 
               return (
@@ -451,14 +455,14 @@ export default function OrdersPage() {
                 <h3 className="font-bold text-foreground mb-3">Trạng thái đơn hàng</h3>
                 <span
                   className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border ${
-                    statusConfig[selectedOrder.status].color
+                    (statusConfig[selectedOrder.status] || { color: 'bg-gray-100 text-gray-800 border-gray-200' }).color
                   }`}
                 >
                   {(() => {
-                    const StatusIcon = statusConfig[selectedOrder.status].icon;
+                    const StatusIcon = (statusConfig[selectedOrder.status] || { icon: Package }).icon;
                     return <StatusIcon className="h-4 w-4" />;
                   })()}
-                  {statusConfig[selectedOrder.status].label}
+                  {(statusConfig[selectedOrder.status] || { label: 'Đang xử lý (Chờ cập nhật)' }).label}
                 </span>
               </div>
 
