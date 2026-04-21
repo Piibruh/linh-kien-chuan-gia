@@ -34,13 +34,14 @@ import {
   getOrderActionLabel,
   type OrderAction,
 } from '../../../lib/orderFlow';
+import { CancelOrderModal } from '../../components/cancel-order-modal';
 
 type SortField = 'id' | 'customerName' | 'total' | 'status' | 'createdAt';
 type SortOrder = 'asc' | 'desc';
 
 export default function OrdersList() {
   const navigate = useNavigate();
-  const { orders, products, updateOrderStatus, markOrderCodCollected, deleteOrder } = useAdminStore();
+  const { orders, products, updateOrderStatus, markOrderCodCollected, deleteOrder, cancelOrderByCustomer } = useAdminStore();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
 
   // UI State
@@ -52,6 +53,7 @@ export default function OrdersList() {
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
   const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
@@ -613,9 +615,14 @@ export default function OrdersList() {
                           <div className="flex items-center gap-2">
                             <select
                               value={order.status}
-                              onChange={(e) =>
-                                handleUpdateStatus(order.id, e.target.value as OrderStatus)
-                              }
+                              onChange={(e) => {
+                                const newStatus = e.target.value as OrderStatus;
+                                if (newStatus === 'cancelled') {
+                                  setOrderToCancel(order);
+                                } else {
+                                  handleUpdateStatus(order.id, newStatus);
+                                }
+                              }}
                               disabled={updatingOrderId === order.id}
                               className={`text-xs font-medium px-2 py-1 rounded border cursor-pointer focus:outline-none disabled:opacity-50 ${getStatusBadgeColor(
                                 order.status
@@ -681,6 +688,20 @@ export default function OrdersList() {
                         <p className="text-sm text-gray-500 mt-1 font-medium">{getStatusLabel(selectedOrder.status)} • {formatDate(selectedOrder.createdAt)}</p>
                       </div>
                       <div className="flex items-center gap-3">
+                        {selectedOrder.status === 'pending' && (
+                          <>
+                            <button onClick={async () => {
+                              await handleUpdateStatus(selectedOrder.id, 'processing');
+                              setSelectedOrder({ ...selectedOrder, status: 'processing' });
+                            }} className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-all text-sm font-bold shadow-sm">
+                              Duyệt đơn
+                            </button>
+                            <button onClick={() => setOrderToCancel(selectedOrder)} className="flex items-center gap-2 px-4 py-2 border border-red-200 text-red-600 hover:bg-red-50 rounded-xl transition-all text-sm font-bold shadow-sm">
+                              Từ chối
+                            </button>
+                            <div className="w-px h-6 bg-gray-200 mx-1"></div>
+                          </>
+                        )}
                         <button onClick={handlePrintOrder} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl transition-all text-sm font-bold shadow-sm">
                           <Printer className="h-4 w-4" /> In hóa đơn
                         </button>
@@ -823,6 +844,26 @@ export default function OrdersList() {
           )}
         </div>
       </div>
+
+      {orderToCancel && (
+        <CancelOrderModal
+          orderId={orderToCancel.id}
+          isAdmin={true}
+          onConfirm={async (reason, note) => {
+            try {
+              await cancelOrderByCustomer(orderToCancel.id, reason, note);
+              toast.success('Đã từ chối đơn hàng với lý do thành công');
+              setOrderToCancel(null);
+              if (selectedOrder && selectedOrder.id === orderToCancel.id) {
+                setSelectedOrder({ ...selectedOrder, status: 'cancelled' });
+              }
+            } catch (e: any) {
+              throw new Error(e.message || 'Không thể hủy đơn');
+            }
+          }}
+          onClose={() => setOrderToCancel(null)}
+        />
+      )}
     </div>
   );
 }

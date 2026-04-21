@@ -35,6 +35,7 @@ import { useAuthStore, UserRole } from '../../store/authStore';
 import { useThemeStore } from '../../store/themeStore';
 import { useAdminStore, Order, OrderStatus, StoredUser } from '../../store/adminStore';
 import { toast } from 'sonner';
+import { CancelOrderModal } from '../components/cancel-order-modal';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface DashboardStats {
@@ -113,7 +114,7 @@ export default function AdminDashboard() {
   const { theme, toggleTheme } = useThemeStore();
   const {
     products, orders, users, categories,
-    updateOrderStatus, deleteOrder,
+    updateOrderStatus, deleteOrder, cancelOrderByCustomer,
     addProduct, deleteProduct,
     addCategory, deleteCategory,
     addUser, updateUserRole, updateUserProfile, deleteUser,
@@ -129,6 +130,7 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [orderToCancel, setOrderToCancel] = useState<Order | null>(null);
   const [selectedUser, setSelectedUser] = useState<StoredUser | null>(null);
 
   const handleViewOrder = (order: Order) => setSelectedOrder(order);
@@ -994,7 +996,14 @@ export default function AdminDashboard() {
                             <td className="px-6 py-4"><span className="text-sm font-medium text-foreground">{order.tongTien.toLocaleString('vi-VN')}₫</span></td>
                             <td className="px-6 py-4">
                               <select value={order.trangThai}
-                                onChange={(e) => handleUpdateOrderStatus(order.maDonHang, e.target.value as OrderStatus)}
+                                onChange={(e) => {
+                                  const newStatus = e.target.value as OrderStatus;
+                                  if (newStatus === 'cancelled') {
+                                    setOrderToCancel(order);
+                                  } else {
+                                    handleUpdateOrderStatus(order.maDonHang, newStatus);
+                                  }
+                                }}
                                 disabled={loadingStates[`order-${order.maDonHang}`]}
                                 className={`text-xs font-medium px-2 py-1 rounded-full border cursor-pointer focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed ${statusColors[order.trangThai]}`}>
                                 <option value="pending">Chờ xác nhận</option>
@@ -1784,6 +1793,23 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               </div>
+            )}
+
+            {orderToCancel && (
+              <CancelOrderModal
+                orderId={orderToCancel.maDonHang}
+                isAdmin={true}
+                onConfirm={async (reason, note) => {
+                  try {
+                    await cancelOrderByCustomer(orderToCancel.maDonHang, reason, note);
+                    toast.success('Đã hủy đơn hàng với lý do thành công');
+                    setOrderToCancel(null);
+                  } catch (e: any) {
+                    throw new Error(e.message || 'Không thể hủy đơn');
+                  }
+                }}
+                onClose={() => setOrderToCancel(null)}
+              />
             )}
           </div>
         </main>
