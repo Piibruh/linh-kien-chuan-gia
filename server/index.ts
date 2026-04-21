@@ -577,7 +577,7 @@ app.post('/api/orders', authRequired, async (req, res) => {
   const u = getUser(req);
   const body = req.body;
   const paymentMethod = body.paymentMethod === 'online' ? 'online' : 'cod';
-  const fullAddress = combineAddress(body.address, body.ward, body.district, body.city);
+  const fullAddress = combineAddress(body.diaChi || body.address, body.ward, body.district, body.city);
  
   // Minimum order validation (50,000 VND)
   const subtotal = body.items.reduce((sum: number, i: any) => sum + (Number(i.price) * Number(i.quantity)), 0);
@@ -602,8 +602,8 @@ app.post('/api/orders', authRequired, async (req, res) => {
         data: {
           maNguoiDung: u.sub,
           tenNguoiNhan: body.fullName,
-          sdtNhan: body.phone,
-          diaChiGiao: fullAddress,
+          sdtNhan: body.dienThoai || body.phone,
+          diaChiGiao: fullAddress || (body.diaChi || body.address),
           ghiChu: body.notes ? String(body.notes).trim() : null,
           tongTien: body.total,
           trangThai: ORDER_STATUS_DB.pending,
