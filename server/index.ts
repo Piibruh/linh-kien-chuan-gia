@@ -961,7 +961,7 @@ app.patch('/api/users/:id', authRequired, async (req, res) => {
     return;
   }
 
-  const { name, phone, address, role } = req.body ?? {};
+  const { name, phone, address, role, hoTen, dienThoai, diaChi } = req.body ?? {};
 
   try {
     const nd = await prisma.nguoiDung.findUnique({ where: { maNguoiDung: req.params.id } });
@@ -971,9 +971,14 @@ app.patch('/api/users/:id', authRequired, async (req, res) => {
     }
 
     const profileData: any = {};
-    if (name !== undefined) profileData.hoTen = String(name).trim();
-    if (phone !== undefined) profileData.dienThoai = phone ? String(phone).trim() : null;
-    if (address !== undefined) profileData.diaChi = address ? String(address).trim() : null;
+    const finalName = hoTen !== undefined ? hoTen : name;
+    if (finalName !== undefined) profileData.hoTen = String(finalName).trim();
+    
+    const finalPhone = dienThoai !== undefined ? dienThoai : phone;
+    if (finalPhone !== undefined) profileData.dienThoai = finalPhone ? String(finalPhone).trim() : null;
+
+    const finalAddress = diaChi !== undefined ? diaChi : address;
+    if (finalAddress !== undefined) profileData.diaChi = finalAddress ? String(finalAddress).trim() : null;
 
     if (Object.keys(profileData).length > 0) {
       await prisma.nguoiDung.update({ where: { maNguoiDung: req.params.id }, data: profileData });
