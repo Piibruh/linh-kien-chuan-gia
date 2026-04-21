@@ -46,8 +46,15 @@ export const useAuthStore = create<AuthStore>()(
           const data = await res.json().catch(() => ({}));
 
           if (res.ok && data.user) {
-            // FIX: Normalize role to lowercase to handle DB returning "USER"/"ADMIN"
-            const normalizedUser = { ...data.user, role: String(data.user.role ?? 'user').toLowerCase() };
+            // FIX: Normalize role and name properties to handle legacy DB/API fields
+            const normalizedUser = { 
+              maNguoiDung: data.user.maNguoiDung || data.user.id || '',
+              hoTen: data.user.hoTen || data.user.name || '',
+              email: data.user.email || '',
+              role: String(data.user.role ?? 'user').toLowerCase(),
+              dienThoai: data.user.dienThoai || data.user.phone || '',
+              diaChi: data.user.diaChi || data.user.address || '',
+            };
             set({ user: normalizedUser, isLoggedIn: true, token: data.token });
             return { success: true, message: `Chào mừng ${normalizedUser.hoTen}!` };
           }

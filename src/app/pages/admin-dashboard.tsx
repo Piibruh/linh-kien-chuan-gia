@@ -93,7 +93,7 @@ const INITIAL_PRODUCT_FORM = {
 const INITIAL_CATEGORY_FORM = { name: '' };
 
 const INITIAL_USER_FORM = {
-  id: '', name: '', email: '', phone: '', address: '', password: '', confirmPassword: '', role: 'user' as UserRole,
+  id: '', hoTen: '', email: '', dienThoai: '', diaChi: '', password: '', confirmPassword: '', role: 'user' as UserRole,
 };
 
 // ─── Role Labels ──────────────────────────────────────────────────────────────
@@ -539,15 +539,15 @@ export default function AdminDashboard() {
   };
 
   const validateUser = () => {
-    const errs: Partial<typeof INITIAL_USER_FORM> = {};
-    if (!userForm.name.trim()) errs.name = 'Vui lòng nhập họ tên';
+    const errs: Record<string, string> = {};
+    if (!userForm.hoTen.trim()) errs.hoTen = 'Vui lòng nhập họ tên';
     if (!userForm.email.trim()) errs.email = 'Vui lòng nhập email';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userForm.email.trim()))
       errs.email = 'Email không hợp lệ';
-    else if (users.some((u) => u.email.toLowerCase() === userForm.email.trim().toLowerCase()))
+    else if (users.some((u) => u.email.toLowerCase() === userForm.email.trim().toLowerCase() && u.maNguoiDung !== userForm.id))
       errs.email = 'Email đã tồn tại';
-    if (!userForm.password) errs.password = 'Vui lòng nhập mật khẩu';
-    else if (userForm.password.length < 6) errs.password = 'Mật khẩu phải có ít nhất 6 ký tự';
+    if (!userForm.id && !userForm.password) errs.password = 'Vui lòng nhập mật khẩu';
+    else if (userForm.password && userForm.password.length < 6) errs.password = 'Mật khẩu phải có ít nhất 6 ký tự';
     if (userForm.password !== userForm.confirmPassword) errs.confirmPassword = 'Mật khẩu xác nhận không khớp';
     setUserErrors(errs);
     return Object.keys(errs).length === 0;
@@ -558,19 +558,30 @@ export default function AdminDashboard() {
     if (!validateUser()) return;
     setUserLoading(true);
     try {
-      await addUser({
-        name: userForm.name.trim(),
-        email: userForm.email.trim(),
-        phone: userForm.phone.trim(),
-        password: userForm.password,
-        role: userForm.role,
-        address: '',
-      });
-      toast.success(`Đã thêm người dùng "${userForm.name.trim()}" - có thể đăng nhập ngay!`);
+      if (userForm.id) {
+        // Edit mode
+        await updateUserProfile(userForm.id, {
+          hoTen: userForm.hoTen.trim(),
+          dienThoai: userForm.dienThoai.trim(),
+          diaChi: userForm.diaChi.trim(),
+        });
+        toast.success(`Đã cập nhật người dùng "${userForm.hoTen.trim()}"`);
+      } else {
+        // Add mode
+        await addUser({
+          hoTen: userForm.hoTen.trim(),
+          email: userForm.email.trim(),
+          dienThoai: userForm.dienThoai.trim(),
+          password: userForm.password,
+          role: userForm.role,
+          diaChi: userForm.diaChi.trim(),
+        });
+        toast.success(`Đã thêm người dùng "${userForm.hoTen.trim()}" - có thể đăng nhập ngay!`);
+      }
       setUserForm(INITIAL_USER_FORM);
       setUserErrors({});
       setShowAddUser(false);
-    } catch { toast.error('Không thể thêm người dùng'); }
+    } catch { toast.error(userForm.id ? 'Không thể cập nhật người dùng' : 'Không thể thêm người dùng'); }
     finally { setUserLoading(false); }
   };
 
@@ -853,11 +864,11 @@ export default function AdminDashboard() {
           <div className="p-4 border-t border-border">
             <div className={`flex items-center gap-3 ${sidebarCollapsed ? 'justify-center' : ''}`}>
               <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center text-primary-foreground font-bold flex-shrink-0">
-                {user.name.charAt(0).toUpperCase()}
+                {user.hoTen.charAt(0).toUpperCase()}
               </div>
               {!sidebarCollapsed && (
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
+                  <p className="text-sm font-medium text-foreground truncate">{user.hoTen}</p>
                   <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full mt-0.5 inline-block ${ROLE_LABELS[user.role]?.color ?? 'bg-muted text-muted-foreground'}`}>
                     {ROLE_LABELS[user.role]?.label ?? user.role}

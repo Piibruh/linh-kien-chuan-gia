@@ -13,9 +13,9 @@ export default function ProfilePage() {
   // ALL hooks must come before any conditional return
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState({
-    name: user?.name ?? '',
-    phone: user?.phone ?? '',
-    address: user?.address ?? '',
+    hoTen: user?.hoTen ?? '',
+    dienThoai: user?.dienThoai ?? '',
+    diaChi: user?.diaChi ?? '',
   });
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
@@ -25,12 +25,12 @@ export default function ProfilePage() {
   useEffect(() => {
     if (user) {
       setEditedProfile({
-        name: user.name ?? '',
-        phone: user.phone ?? '',
-        address: user.address ?? '',
+        hoTen: user.hoTen ?? '',
+        dienThoai: user.dienThoai ?? '',
+        diaChi: user.diaChi ?? '',
       });
     }
-  }, [user?.id]);
+  }, [user?.maNguoiDung]);
 
   // Guard: not logged in — after all hooks
   if (!isLoggedIn || !user) {
@@ -54,17 +54,18 @@ export default function ProfilePage() {
   const handleSaveProfile = async () => {
     try {
       // Persist to adminStore (source of truth for future logins)
-      await updateUserProfile(user.id, {
-        name: editedProfile.name.trim(),
-        phone: editedProfile.phone.trim(),
-        address: editedProfile.address.trim(),
+      // We map the new schema field names to the backend expecting structure
+      await updateUserProfile(user.maNguoiDung, {
+        hoTen: editedProfile.hoTen.trim(),
+        dienThoai: editedProfile.dienThoai.trim(),
+        diaChi: editedProfile.diaChi.trim(),
       });
 
       // Update authStore session
       updateProfile({
-        name: editedProfile.name.trim(),
-        phone: editedProfile.phone.trim(),
-        address: editedProfile.address.trim(),
+        hoTen: editedProfile.hoTen.trim(),
+        dienThoai: editedProfile.dienThoai.trim(),
+        diaChi: editedProfile.diaChi.trim(),
       });
 
       setIsEditing(false);
@@ -75,7 +76,7 @@ export default function ProfilePage() {
   };
 
   const handleCancelEdit = () => {
-    setEditedProfile({ name: user.name, phone: user.phone ?? '', address: user.address ?? '' });
+    setEditedProfile({ hoTen: user.hoTen ?? '', dienThoai: user.dienThoai ?? '', diaChi: user.diaChi ?? '' });
     setIsEditing(false);
   };
 
@@ -136,10 +137,10 @@ export default function ProfilePage() {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-gradient-to-br from-primary to-accent rounded-full flex items-center justify-center text-primary-foreground text-2xl font-bold">
-                {user.name.charAt(0).toUpperCase()}
+                {user.hoTen?.charAt(0).toUpperCase() || 'U'}
               </div>
               <div>
-                <h2 className="text-xl font-bold text-foreground">{user.name}</h2>
+                <h2 className="text-xl font-bold text-foreground">{user.hoTen}</h2>
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                   user.role === 'admin' ? 'bg-destructive/10 text-destructive' :
                   user.role === 'staff' ? 'bg-primary/10 text-primary' :
@@ -186,15 +187,15 @@ export default function ProfilePage() {
               {isEditing ? (
                 <input
                   type="text"
-                  name="name"
-                  value={editedProfile.name}
+                  name="hoTen"
+                  value={editedProfile.hoTen}
                   onChange={handleProfileChange}
                   className="w-full px-4 py-3 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               ) : (
                 <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                   <User className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-foreground">{user.name}</span>
+                  <span className="text-foreground">{user.hoTen}</span>
                 </div>
               )}
             </div>
@@ -212,8 +213,8 @@ export default function ProfilePage() {
               {isEditing ? (
                 <input
                   type="tel"
-                  name="phone"
-                  value={editedProfile.phone}
+                  name="dienThoai"
+                  value={editedProfile.dienThoai}
                   onChange={handleProfileChange}
                   placeholder="0912345678"
                   className="w-full px-4 py-3 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
@@ -221,7 +222,7 @@ export default function ProfilePage() {
               ) : (
                 <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                   <Phone className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-muted-foreground italic">{user.phone || 'Chưa cập nhật'}</span>
+                  <span className="text-muted-foreground italic">{user.dienThoai || 'Chưa cập nhật'}</span>
                 </div>
               )}
             </div>
@@ -231,8 +232,8 @@ export default function ProfilePage() {
               {isEditing ? (
                 <input
                   type="text"
-                  name="address"
-                  value={editedProfile.address}
+                  name="diaChi"
+                  value={editedProfile.diaChi}
                   onChange={handleProfileChange}
                   placeholder="Địa chỉ của bạn"
                   className="w-full px-4 py-3 bg-input-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
@@ -240,7 +241,7 @@ export default function ProfilePage() {
               ) : (
                 <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                   <MapPin className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-muted-foreground italic">{user.address || 'Chưa cập nhật'}</span>
+                  <span className="text-muted-foreground italic">{user.diaChi || 'Chưa cập nhật'}</span>
                 </div>
               )}
             </div>
