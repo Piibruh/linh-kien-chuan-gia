@@ -38,10 +38,10 @@ export default function CheckoutPage() {
   const createOrder = useAdminStore((s) => s.createOrder);
 
   const [formData, setFormData] = useState<FormData>({
-    fullName: user?.name ?? '',
-    phone: user?.phone ?? '',
+    fullName: user?.hoTen ?? '',
+    phone: user?.dienThoai ?? '',
     email: user?.email ?? '',
-    address: user?.address ?? '',
+    address: user?.diaChi ?? '',
     city: '',
     district: '',
     ward: '',
@@ -175,11 +175,11 @@ export default function CheckoutPage() {
       const total = subtotal + shippingFee;
 
       await createOrder({
-        customerId: user.id,
-        customerName: formData.fullName.trim(),
-        customerEmail: formData.email.trim(),
-        phoneNumber: formData.phone.trim(),
-        shippingAddress: fullAddress,
+        maNguoiDung: user.maNguoiDung,
+        tenNguoiNhan: formData.fullName.trim(),
+        emailNguoiNhan: formData.email.trim(),
+        sdtNhan: formData.phone.trim(),
+        diaChiGiao: fullAddress,
         addressLine: formData.address.trim(),
         city: formData.city.trim(),
         district: formData.district.trim(),
@@ -191,13 +191,13 @@ export default function CheckoutPage() {
         subtotal,
         discount: 0,
         shippingFee,
-        products: items.map((i) => ({
-          id: i.id,
-          name: i.name,
-          quantity: i.quantity,
-          price: i.price,
+        chiTiet: items.map((i) => ({
+          maSanPham: i.id,
+          tenSanPham: i.name,
+          soLuong: i.quantity,
+          donGia: i.price,
         })),
-        totalAmount: total,
+        tongTien: total,
       });
 
       clearCart();

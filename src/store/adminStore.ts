@@ -388,10 +388,10 @@ export const useAdminStore = create<AdminStore>()(
 
       // Order operations
       createOrder: async (payload) => {
-        const trimmedName = payload.tenNguoiNhan.trim();
-        const trimmedEmail = payload.emailNguoiNhan.trim();
-        const trimmedPhone = payload.sdtNhan.trim();
-        const trimmedAddress = (payload.addressLine ?? payload.diaChiGiao).trim();
+        const trimmedName = (payload.tenNguoiNhan || '').trim();
+        const trimmedEmail = (payload.emailNguoiNhan || '').trim();
+        const trimmedPhone = (payload.sdtNhan || '').trim();
+        const trimmedAddress = (payload.addressLine ?? payload.diaChiGiao ?? '').trim();
 
         if (!payload.maNguoiDung || !trimmedName || !trimmedEmail || !trimmedPhone || !trimmedAddress) {
           throw new Error('Thiếu thông tin khách hàng hoặc địa chỉ giao hàng');
